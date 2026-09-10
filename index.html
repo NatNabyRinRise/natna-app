@@ -31,12 +31,20 @@
     <div id="cardView"></div>
 
     <div id="calendarView" class="hidden">
+      <div class="cal-page-header">
+        <img src="assets/logo.png" alt="NatNa logo" class="cal-page-logo">
+        <div class="cal-page-title"><span class="cal-title-prefix">ปฏิทิน</span> <span class="brand-th">นัดนะ</span></div>
+      </div>
       <div class="cal-nav">
         <button onclick="changeMonth(-1)">‹</button>
         <div class="cal-month-label" id="calMonthLabel"></div>
         <button onclick="changeMonth(1)">›</button>
       </div>
       <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span class="legend-item"><span class="legend-dot legend-dot-today"></span>วันนี้</span>
+        <span class="legend-item"><span class="legend-dot legend-dot-upcoming"></span>ยังไม่ถึงนัด</span>
+      </div>
       <div class="cal-day-list" id="calDayList"></div>
     </div>
   </div>
@@ -45,7 +53,7 @@
   <div id="addPage" class="hidden">
     <button class="back-btn" onclick="showHome()">← กลับ</button>
     <div class="card">
-      <div class="manage-title">เพิ่มนัดหมายใหม่</div>
+      <div class="manage-title" id="addPageTitle">เพิ่มนัดหมายใหม่</div>
       <div class="form-field"><label>ชื่อคนไข้ *</label><input type="text" id="fName" placeholder="เช่น คุณยายสมศรี ใจดี"></div>
       <div class="form-field"><label>สถานที่นัด *</label><input type="text" id="fPlace" placeholder="เช่น โรงพยาบาลศิริราช"></div>
       <div class="form-field"><label>แผนก / อาคาร / ชั้น *</label><input type="text" id="fDept" placeholder="เช่น แผนกอายุรกรรม อาคาร 4 ชั้น 2"></div>
@@ -71,7 +79,7 @@
   <div id="previewPage" class="hidden">
     <button class="back-btn" onclick="editAppointment()">← แก้ไข</button>
     <div class="card">
-      <div class="manage-title">ตรวจสอบข้อมูลนัดหมาย</div>
+      <div class="manage-title" id="previewPageTitle">ตรวจสอบข้อมูลนัดหมาย</div>
       <p class="manage-sub">กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนยืนยัน</p>
       <ul class="preview-list">
         <li><span class="preview-label">ชื่อคนไข้</span><span class="preview-value" id="pName"></span></li>
