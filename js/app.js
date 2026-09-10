@@ -8,14 +8,14 @@ function iso(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padSt
 const today = new Date(); today.setHours(0,0,0,0);
 
 let appointments = [
-  { id:crypto.randomUUID(), name:'คุณยายสมศรี ใจดี', place:'โรงพยาบาลศิริราช · แผนกอายุรกรรม', date:'2026-09-11', time:'09:30',
+  { id:crypto.randomUUID(), name:'คุณยายสมศรี ใจดี', place:'โรงพยาบาลศิริราช', dept:'แผนกอายุรกรรม', date:'2026-09-11', time:'09:30',
     checklist:[
       {id:crypto.randomUUID(), text:'พกบัตรประชาชน / บัตรโรงพยาบาล', done:false, source:'custom'},
       {id:crypto.randomUUID(), text:'พกยาที่กินอยู่ประจำ', done:false, source:'custom'}
     ] },
-  { id:crypto.randomUUID(), name:'คุณตาประยุทธ์ มั่นคง', place:'โรงพยาบาลรามาธิบดี · แผนกหัวใจ', date:'2026-09-20', time:'13:00', checklist:[] },
-  { id:crypto.randomUUID(), name:'คุณป้าวันเพ็ญ สุขใจ', place:'โรงพยาบาลจุฬาลงกรณ์ · แผนกตา', date:'2026-08-30', time:'10:15', checklist:[] },
-  { id:crypto.randomUUID(), name:'คุณลุงสมชาย รุ่งเรือง', place:'โรงพยาบาลศิริราช · แผนกกระดูก', date:'2026-10-05', time:'14:30', checklist:[] }
+  { id:crypto.randomUUID(), name:'คุณตาประยุทธ์ มั่นคง', place:'โรงพยาบาลรามาธิบดี', dept:'แผนกหัวใจ', date:'2026-09-20', time:'13:00', checklist:[] },
+  { id:crypto.randomUUID(), name:'คุณป้าวันเพ็ญ สุขใจ', place:'โรงพยาบาลจุฬาลงกรณ์', dept:'แผนกตา', date:'2026-08-30', time:'10:15', checklist:[] },
+  { id:crypto.randomUUID(), name:'คุณลุงสมชาย รุ่งเรือง', place:'โรงพยาบาลศิริราช', dept:'แผนกกระดูก', date:'2026-10-05', time:'14:30', checklist:[] }
 ];
 
 let currentApptId = null;
@@ -35,6 +35,10 @@ const NOTIFY_OPTIONS = [
 ];
 let selectedNotify = [];
 let pendingAppt = null; // ข้อมูลนัดหมายที่กรอกไว้ รอตรวจสอบในหน้า Preview
+let editingApptId = null; // ถ้าไม่ใช่ null แปลว่ากำลังแก้ไขนัดหมายเดิม (ไม่ใช่เพิ่มใหม่)
+
+// ไอคอนแทนสถานะนัดหมาย (ใช้ในรายการนัดของหน้าปฏิทิน)
+const STATUS_ICONS = { urgent:'🔥', upcoming:'👨‍⚕️', expired:'🧊' };
 
 // ================= NAV between top-level pages =================
 function hideAllPages(){
@@ -47,8 +51,10 @@ function showHome(){
   renderCalendar();
 }
 function showAddForm(){
+  editingApptId = null;
   hideAllPages();
   document.getElementById('addPage').classList.remove('hidden');
+  document.getElementById('addPageTitle').textContent = 'เพิ่มนัดหมายใหม่';
   document.getElementById('fName').value='';
   document.getElementById('fPlace').value='';
   document.getElementById('fDept').value='';
@@ -56,6 +62,24 @@ function showAddForm(){
   document.getElementById('fHour').value='';
   document.getElementById('fMinute').value='';
   selectedNotify = [];
+  renderNotifyChips();
+}
+function editApptFromList(id){
+  // เปิดฟอร์มเดิม พร้อมข้อมูลนัดหมายที่มีอยู่แล้ว สำหรับปุ่ม "แก้ไข" ในรายการหน้าปฏิทิน
+  const appt = appointments.find(a => a.id === id);
+  if(!appt) return;
+  editingApptId = id;
+  hideAllPages();
+  document.getElementById('addPage').classList.remove('hidden');
+  document.getElementById('addPageTitle').textContent = 'แก้ไขนัดหมาย';
+  document.getElementById('fName').value = appt.name;
+  document.getElementById('fPlace').value = appt.place;
+  document.getElementById('fDept').value = appt.dept || '';
+  document.getElementById('fDate').value = appt.date;
+  const [h, m] = appt.time.split(':');
+  document.getElementById('fHour').value = h;
+  document.getElementById('fMinute').value = m;
+  selectedNotify = appt.notifications ? [...appt.notifications] : [];
   renderNotifyChips();
 }
 function editAppointment(){
@@ -194,6 +218,7 @@ function goToPreview(){
     return;
   }
   pendingAppt = { name, place, dept, date, time:`${hour}:${minute}`, notifications:[...selectedNotify] };
+  document.getElementById('previewPageTitle').textContent = editingApptId ? 'ตรวจสอบการแก้ไขนัดหมาย' : 'ตรวจสอบข้อมูลนัดหมาย';
   renderPreview();
   hideAllPages();
   document.getElementById('previewPage').classList.remove('hidden');
@@ -210,7 +235,13 @@ function renderPreview(){
 }
 
 function confirmAppointment(){
-  appointments.push({ id:crypto.randomUUID(), ...pendingAppt, checklist:[] });
+  if(editingApptId){
+    const appt = appointments.find(a => a.id === editingApptId);
+    Object.assign(appt, pendingAppt); // แก้ไขเฉพาะข้อมูลนัดหมาย ไม่แตะเช็คลิสต์เดิม
+    editingApptId = null;
+  } else {
+    appointments.push({ id:crypto.randomUUID(), ...pendingAppt, checklist:[] });
+  }
   pendingAppt = null;
   showHome();
 }
@@ -225,6 +256,14 @@ function setHomeView(view){
 }
 
 // ================= Calendar view =================
+// สถานะสำหรับ "สี" บนตารางปฏิทิน (เขียว=วันนี้, ทอง=ยังไม่ถึงนัด ไม่ว่าจะใกล้แค่ไหน, เทา=หมดอายุ)
+// แยกจาก apptStatus() ซึ่งใช้กับป้ายข้อความ/ไอคอนในรายการนัด (ละเอียดกว่า มี "ใกล้ถึง" แยกจาก "วันนี้")
+function calDayStatusCls(dateStr){
+  const diffDays = apptStatus(dateStr).diffDays;
+  if(diffDays < 0) return 'expired';
+  if(diffDays === 0) return 'today';
+  return 'upcoming';
+}
 function changeMonth(delta){
   calMonth += delta;
   if(calMonth < 0){ calMonth = 11; calYear--; }
@@ -257,7 +296,7 @@ function renderCalendar(){
     const dateStr = iso(calYear, calMonth+1, d);
     const dayAppts = appointments.filter(a => a.date === dateStr);
     const cell = document.createElement('div');
-    const statusCls = dayAppts.length ? apptStatus(dayAppts[0].date).cls : '';
+    const statusCls = dayAppts.length ? calDayStatusCls(dateStr) : '';
     cell.className = 'cal-day' + (dayAppts.length ? ` has-appt cal-cell-${statusCls}` : '') + (selectedCalDate===dateStr ? ' selected' : '');
     cell.innerHTML = `<span>${d}</span>`;
     if(dayAppts.length){
@@ -270,7 +309,7 @@ function renderCalendar(){
     const dayAppts = appointments.filter(a => a.date === selectedCalDate);
     if(dayAppts.length) renderCalDayList(dayAppts); else document.getElementById('calDayList').innerHTML='';
   } else {
-    document.getElementById('calDayList').innerHTML = '<p class="empty-note">แตะวันที่มีจุดสีเพื่อดูนัดหมาย</p>';
+    document.getElementById('calDayList').innerHTML = '';
   }
 }
 function renderCalDayList(dayAppts){
@@ -278,17 +317,24 @@ function renderCalDayList(dayAppts){
   el.innerHTML = '';
   dayAppts.forEach(appt => {
     const st = apptStatus(appt.date);
+    const icon = STATUS_ICONS[st.cls] || '📅';
     const card = document.createElement('div');
-    card.className = 'appt-card';
+    card.className = 'appt-card cal-appt-row';
     card.innerHTML = `
-      <div>
+      <div class="status-icon status-icon-${st.cls}" title="${st.label}">${icon}</div>
+      <div class="cal-appt-info">
         <div class="appt-name">${appt.name}</div>
         <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
       </div>
-      <div class="appt-right"><span class="badge badge-${st.cls}">${st.label}</span></div>
+      <div class="cal-appt-actions">
+        <button class="edit-btn" title="แก้ไข">✏️</button>
+        <button class="trash-btn" title="ลบนัดหมาย">🗑</button>
+      </div>
     `;
-    card.addEventListener('click', () => showDetail(appt.id));
+    card.querySelector('.cal-appt-info').addEventListener('click', () => showDetail(appt.id));
+    card.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); editApptFromList(appt.id); });
+    card.querySelector('.trash-btn').addEventListener('click', (e) => { e.stopPropagation(); askDelete(appt.id); });
     el.appendChild(card);
   });
 }
