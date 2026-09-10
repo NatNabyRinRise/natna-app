@@ -24,9 +24,21 @@ let calMonth = today.getMonth();
 let calYear = today.getFullYear();
 let selectedCalDate = null;
 
+// ตัวเลือกแจ้งเตือนล่วงหน้า (เลือกได้หลายอัน ไม่บังคับ)
+const NOTIFY_OPTIONS = [
+  { value:'7d', label:'1 สัปดาห์' },
+  { value:'5d', label:'5 วัน' },
+  { value:'3d', label:'3 วัน' },
+  { value:'1d', label:'1 วัน' },
+  { value:'3h', label:'3 ชม.' },
+  { value:'1h', label:'1 ชม.' }
+];
+let selectedNotify = [];
+let pendingAppt = null; // ข้อมูลนัดหมายที่กรอกไว้ รอตรวจสอบในหน้า Preview
+
 // ================= NAV between top-level pages =================
 function hideAllPages(){
-  ['homePage','addPage','detailPage','managePage'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['homePage','addPage','previewPage','detailPage','managePage'].forEach(id => document.getElementById(id).classList.add('hidden'));
 }
 function showHome(){
   hideAllPages();
@@ -39,8 +51,17 @@ function showAddForm(){
   document.getElementById('addPage').classList.remove('hidden');
   document.getElementById('fName').value='';
   document.getElementById('fPlace').value='';
+  document.getElementById('fDept').value='';
   document.getElementById('fDate').value='';
-  document.getElementById('fTime').value='';
+  document.getElementById('fHour').value='';
+  document.getElementById('fMinute').value='';
+  selectedNotify = [];
+  renderNotifyChips();
+}
+function editAppointment(){
+  // กลับไปหน้ากรอกข้อมูล โดยไม่ล้างข้อมูลที่กรอกไว้ (สำหรับปุ่ม "แก้ไข" จากหน้า Preview)
+  hideAllPages();
+  document.getElementById('addPage').classList.remove('hidden');
 }
 function showDetail(id){
   currentApptId = id;
@@ -90,7 +111,7 @@ function renderCardView(){
     card.innerHTML = `
       <div>
         <div class="appt-name">${appt.name}</div>
-        <div class="appt-place">${appt.place}</div>
+        <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
       </div>
       <div class="appt-right">
@@ -128,13 +149,69 @@ function confirmDelete(){
 }
 
 // ================= Add appointment =================
-function submitAddForm(){
+function populateTimeSelects(){
+  const hourSel = document.getElementById('fHour');
+  for(let h=0; h<24; h++){
+    const v = String(h).padStart(2,'0');
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    hourSel.appendChild(opt);
+  }
+  const minSel = document.getElementById('fMinute');
+  for(let m=0; m<60; m+=5){
+    const v = String(m).padStart(2,'0');
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    minSel.appendChild(opt);
+  }
+}
+
+function renderNotifyChips(){
+  const el = document.getElementById('notifyChips');
+  el.innerHTML = '';
+  NOTIFY_OPTIONS.forEach(opt => {
+    const chip = document.createElement('span');
+    chip.className = 'notify-chip' + (selectedNotify.includes(opt.value) ? ' selected' : '');
+    chip.textContent = opt.label;
+    chip.addEventListener('click', () => {
+      if(selectedNotify.includes(opt.value)) selectedNotify = selectedNotify.filter(v => v !== opt.value);
+      else selectedNotify.push(opt.value);
+      renderNotifyChips();
+    });
+    el.appendChild(chip);
+  });
+}
+
+function goToPreview(){
   const name = document.getElementById('fName').value.trim();
   const place = document.getElementById('fPlace').value.trim();
+  const dept = document.getElementById('fDept').value.trim();
   const date = document.getElementById('fDate').value;
-  const time = document.getElementById('fTime').value || '00:00';
-  if(!name || !date){ alert('กรุณากรอกชื่อคนไข้และวันที่นัดอย่างน้อยค่ะ'); return; }
-  appointments.push({ id:crypto.randomUUID(), name, place, date, time, checklist:[] });
+  const hour = document.getElementById('fHour').value;
+  const minute = document.getElementById('fMinute').value;
+  if(!name || !place || !dept || !date || !hour || !minute){
+    alert('กรุณากรอกข้อมูลให้ครบทุกช่องก่อนนะคะ (ยกเว้นช่องแจ้งเตือน)');
+    return;
+  }
+  pendingAppt = { name, place, dept, date, time:`${hour}:${minute}`, notifications:[...selectedNotify] };
+  renderPreview();
+  hideAllPages();
+  document.getElementById('previewPage').classList.remove('hidden');
+}
+
+function renderPreview(){
+  document.getElementById('pName').textContent = pendingAppt.name;
+  document.getElementById('pPlace').textContent = pendingAppt.place;
+  document.getElementById('pDept').textContent = pendingAppt.dept;
+  document.getElementById('pDate').textContent = fmtDateTh(pendingAppt.date);
+  document.getElementById('pTime').textContent = `${pendingAppt.time} น.`;
+  const labels = pendingAppt.notifications.map(v => NOTIFY_OPTIONS.find(o => o.value === v).label);
+  document.getElementById('pNotify').textContent = labels.length ? `${labels.join(', ')} ก่อนนัด` : 'ไม่ได้ตั้งการแจ้งเตือน';
+}
+
+function confirmAppointment(){
+  appointments.push({ id:crypto.randomUUID(), ...pendingAppt, checklist:[] });
+  pendingAppt = null;
   showHome();
 }
 
@@ -206,7 +283,7 @@ function renderCalDayList(dayAppts){
     card.innerHTML = `
       <div>
         <div class="appt-name">${appt.name}</div>
-        <div class="appt-place">${appt.place}</div>
+        <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
       </div>
       <div class="appt-right"><span class="badge badge-${st.cls}">${st.label}</span></div>
@@ -222,7 +299,7 @@ function currentAppt(){ return appointments.find(a => a.id === currentApptId); }
 function renderDetail(){
   const appt = currentAppt();
   document.getElementById('dName').textContent = appt.name;
-  document.getElementById('dPlace').textContent = appt.place;
+  document.getElementById('dPlace').textContent = appt.place + (appt.dept ? ' · ' + appt.dept : '');
   document.getElementById('dTime').textContent = `${fmtDateTh(appt.date)} · ${appt.time} น.`;
   renderChecklist();
   renderSuggestChips();
@@ -320,4 +397,11 @@ function addGuideItem(){
 document.getElementById('newGuideItem').addEventListener('keypress', e => { if(e.key==='Enter') addGuideItem(); });
 
 // ================= init =================
+// เปิดใช้งานสถานะ :active (สีเปลี่ยนตอนกด) บน iOS Safari ซึ่งปกติต้องมี touch listener
+// อยู่บนหน้าก่อนถึงจะยอม trigger :active ให้ - จำเป็นเพราะกลุ่มเป้าหมายเป็นผู้สูงอายุ
+// ที่ใช้นิ้วแตะและต้องเห็น feedback ทางสีชัดเจนว่ากดโดนแล้ว
+document.addEventListener('touchstart', function(){}, { passive:true });
+
+populateTimeSelects();
+renderNotifyChips();
 showHome();
