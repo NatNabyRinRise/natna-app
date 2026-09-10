@@ -46,11 +46,45 @@
     <button class="back-btn" onclick="showHome()">← กลับ</button>
     <div class="card">
       <div class="manage-title">เพิ่มนัดหมายใหม่</div>
-      <div class="form-field"><label>ชื่อคนไข้</label><input type="text" id="fName" placeholder="เช่น คุณยายสมศรี ใจดี"></div>
-      <div class="form-field"><label>สถานที่นัด</label><input type="text" id="fPlace" placeholder="เช่น โรงพยาบาลศิริราช · แผนกอายุรกรรม"></div>
-      <div class="form-field"><label>วันที่นัด</label><input type="date" id="fDate"></div>
-      <div class="form-field"><label>เวลานัด</label><input type="time" id="fTime"></div>
-      <button class="form-submit" onclick="submitAddForm()">บันทึกนัดหมาย</button>
+      <div class="form-field"><label>ชื่อคนไข้ *</label><input type="text" id="fName" placeholder="เช่น คุณยายสมศรี ใจดี"></div>
+      <div class="form-field"><label>สถานที่นัด *</label><input type="text" id="fPlace" placeholder="เช่น โรงพยาบาลศิริราช"></div>
+      <div class="form-field"><label>แผนก / อาคาร / ชั้น *</label><input type="text" id="fDept" placeholder="เช่น แผนกอายุรกรรม อาคาร 4 ชั้น 2"></div>
+      <div class="form-field"><label>วันที่นัด *</label><input type="date" id="fDate"></div>
+      <div class="form-field">
+        <label>เวลานัด * (24 ชม.)</label>
+        <div class="time-row">
+          <select id="fHour" aria-label="ชั่วโมง"><option value="">ชม.</option></select>
+          <span class="time-colon">:</span>
+          <select id="fMinute" aria-label="นาที"><option value="">นาที</option></select>
+          <span class="time-suffix">น.</span>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>แจ้งเตือนล่วงหน้า (เลือกได้หลายอัน ไม่บังคับ)</label>
+        <div class="notify-chips" id="notifyChips"></div>
+      </div>
+      <button class="form-submit" onclick="goToPreview()">บันทึก</button>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW APPOINTMENT PAGE ============ -->
+  <div id="previewPage" class="hidden">
+    <button class="back-btn" onclick="editAppointment()">← แก้ไข</button>
+    <div class="card">
+      <div class="manage-title">ตรวจสอบข้อมูลนัดหมาย</div>
+      <p class="manage-sub">กรุณาตรวจสอบข้อมูลให้ถูกต้องก่อนยืนยัน</p>
+      <ul class="preview-list">
+        <li><span class="preview-label">ชื่อคนไข้</span><span class="preview-value" id="pName"></span></li>
+        <li><span class="preview-label">สถานที่นัด</span><span class="preview-value" id="pPlace"></span></li>
+        <li><span class="preview-label">แผนก/อาคาร/ชั้น</span><span class="preview-value" id="pDept"></span></li>
+        <li><span class="preview-label">วันที่นัด</span><span class="preview-value" id="pDate"></span></li>
+        <li><span class="preview-label">เวลานัด</span><span class="preview-value" id="pTime"></span></li>
+        <li><span class="preview-label">แจ้งเตือน</span><span class="preview-value" id="pNotify"></span></li>
+      </ul>
+      <div class="preview-actions">
+        <button class="btn-edit" onclick="editAppointment()">แก้ไข</button>
+        <button class="btn-confirm-appt" onclick="confirmAppointment()">ยืนยัน</button>
+      </div>
     </div>
   </div>
 
