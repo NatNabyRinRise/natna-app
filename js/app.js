@@ -37,8 +37,14 @@ let selectedNotify = [];
 let pendingAppt = null; // ข้อมูลนัดหมายที่กรอกไว้ รอตรวจสอบในหน้า Preview
 let editingApptId = null; // ถ้าไม่ใช่ null แปลว่ากำลังแก้ไขนัดหมายเดิม (ไม่ใช่เพิ่มใหม่)
 
-// ไอคอนแทนสถานะนัดหมาย (ใช้ในรายการนัดของหน้าปฏิทิน)
-const STATUS_ICONS = { urgent:'🔥', upcoming:'👨‍⚕️', expired:'🧊' };
+// ไอคอนแทนสถานะนัดหมาย (ใช้ทั้งหน้าแรกและหน้าปฏิทิน)
+// กฎ: วันนี้ = หมอ, น้อยกว่า 3 วัน (ไม่ใช่วันนี้) = ไฟ, ไกลกว่านั้นหรือหมดอายุแล้ว = น้ำแข็ง
+const STATUS_ICONS = { doctor:'👨‍⚕️', fire:'🔥', ice:'🧊' };
+function statusIconKey(diffDays){
+  if(diffDays === 0) return 'doctor';
+  if(diffDays > 0 && diffDays < 3) return 'fire';
+  return 'ice';
+}
 
 // ================= NAV between top-level pages =================
 function hideAllPages(){
@@ -130,22 +136,31 @@ function renderCardView(){
   });
   sorted.forEach(appt => {
     const st = apptStatus(appt.date);
+    const iconKey = statusIconKey(st.diffDays);
     const card = document.createElement('div');
     card.className = 'appt-card';
     card.innerHTML = `
-      <div>
+      <div class="status-icon status-icon-${iconKey}" title="${st.label}">${STATUS_ICONS[iconKey]}</div>
+      <div class="appt-info">
         <div class="appt-name">${appt.name}</div>
         <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
       </div>
       <div class="appt-right">
         <span class="badge badge-${st.cls}">${st.label}</span>
-        <button class="trash-btn" title="ลบนัดหมาย">🗑</button>
+        <div class="row-actions">
+          <button class="edit-btn" title="แก้ไข">✏️</button>
+          <button class="trash-btn" title="ลบนัดหมาย">🗑</button>
+        </div>
       </div>
     `;
     card.addEventListener('click', (e) => {
-      if(e.target.closest('.trash-btn')) return;
+      if(e.target.closest('.trash-btn') || e.target.closest('.edit-btn')) return;
       showDetail(appt.id);
+    });
+    card.querySelector('.edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      editApptFromList(appt.id);
     });
     card.querySelector('.trash-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -153,6 +168,37 @@ function renderCardView(){
     });
     el.appendChild(card);
   });
+}
+
+// ================= Upcoming appointments popup (เด้งอัตโนมัติตอนเปิดแอป) =================
+function checkUpcomingPopup(){
+  const upcoming = appointments
+    .filter(a => { const d = apptStatus(a.date).diffDays; return d >= 0 && d < 5; })
+    .sort((a,b) => apptStatus(a.date).diffDays - apptStatus(b.date).diffDays);
+  if(upcoming.length === 0) return; // ไม่มีนัดแบบนี้ ไม่ต้องขึ้น pop-up
+
+  const el = document.getElementById('upcomingModalList');
+  el.innerHTML = '';
+  upcoming.forEach(appt => {
+    const st = apptStatus(appt.date);
+    const iconKey = statusIconKey(st.diffDays);
+    const card = document.createElement('div');
+    card.className = 'appt-card cal-appt-row';
+    card.innerHTML = `
+      <div class="status-icon status-icon-${iconKey}" title="${st.label}">${STATUS_ICONS[iconKey]}</div>
+      <div class="appt-info">
+        <div class="appt-name">${appt.name}</div>
+        <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
+        <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
+      </div>
+    `;
+    card.addEventListener('click', () => { closeUpcomingPopup(); showDetail(appt.id); });
+    el.appendChild(card);
+  });
+  document.getElementById('upcomingModal').classList.remove('hidden');
+}
+function closeUpcomingPopup(){
+  document.getElementById('upcomingModal').classList.add('hidden');
 }
 
 // ================= Delete confirm =================
@@ -317,12 +363,12 @@ function renderCalDayList(dayAppts){
   el.innerHTML = '';
   dayAppts.forEach(appt => {
     const st = apptStatus(appt.date);
-    const icon = STATUS_ICONS[st.cls] || '📅';
+    const iconKey = statusIconKey(st.diffDays);
     const card = document.createElement('div');
     card.className = 'appt-card cal-appt-row';
     card.innerHTML = `
-      <div class="status-icon status-icon-${st.cls}" title="${st.label}">${icon}</div>
-      <div class="cal-appt-info">
+      <div class="status-icon status-icon-${iconKey}" title="${st.label}">${STATUS_ICONS[iconKey]}</div>
+      <div class="appt-info">
         <div class="appt-name">${appt.name}</div>
         <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
@@ -332,7 +378,7 @@ function renderCalDayList(dayAppts){
         <button class="trash-btn" title="ลบนัดหมาย">🗑</button>
       </div>
     `;
-    card.querySelector('.cal-appt-info').addEventListener('click', () => showDetail(appt.id));
+    card.querySelector('.appt-info').addEventListener('click', () => showDetail(appt.id));
     card.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); editApptFromList(appt.id); });
     card.querySelector('.trash-btn').addEventListener('click', (e) => { e.stopPropagation(); askDelete(appt.id); });
     el.appendChild(card);
@@ -451,3 +497,4 @@ document.addEventListener('touchstart', function(){}, { passive:true });
 populateTimeSelects();
 renderNotifyChips();
 showHome();
+checkUpcomingPopup();

@@ -56,14 +56,16 @@ header::after{
 .appt-card{
   background:var(--white);border:1px solid var(--gold-soft);border-radius:18px;
   padding:18px 18px;margin-bottom:14px;cursor:pointer;
-  display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
 }
 .appt-card:hover{border-color:var(--gold);}
 .appt-card:active, .appt-card.pressed{border:2px solid #8a6a34;box-shadow:0 0 0 3px rgba(181,146,79,0.22);}
+.appt-info{flex:1;min-width:0;cursor:pointer;}
 .appt-name{font-size:18px;font-weight:700;}
 .appt-place{font-size:14px;color:var(--ink-soft);margin-top:2px;}
 .appt-date{font-size:14px;color:var(--ink-soft);margin-top:2px;}
 .appt-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+.row-actions{display:flex;gap:4px;}
 .badge{font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;white-space:nowrap;}
 .badge-urgent{background:var(--notready-bg);color:var(--notready);}
 .badge-upcoming{background:var(--gold-soft);color:#8a6a34;}
@@ -106,16 +108,18 @@ header::after{
 
 .cal-day-list{margin-top:16px;}
 
-/* ===== Calendar day-list: appointment row with status icon + edit/delete ===== */
-.cal-appt-row{align-items:center;gap:12px;}
+/* ===== Status icon (หมอ/กองไฟ/น้ำแข็ง) — ใช้ทั้งหน้าแรกและหน้าปฏิทิน ===== */
+/* วันนี้=หมอ(เขียว), น้อยกว่า 3 วัน=ไฟ(แดง), ไกลกว่านั้น/หมดอายุ=น้ำแข็ง(เทา) */
 .status-icon{
   width:46px;height:46px;border-radius:50%;flex:none;
   display:flex;align-items:center;justify-content:center;font-size:26px;line-height:1;
 }
-.status-icon-urgent{background:var(--notready-bg);}
-.status-icon-upcoming{background:var(--gold-soft);}
-.status-icon-expired{background:var(--expired-bg);}
-.cal-appt-info{flex:1;min-width:0;cursor:pointer;}
+.status-icon-doctor{background:var(--ready-bg);}
+.status-icon-fire{background:var(--notready-bg);}
+.status-icon-ice{background:var(--expired-bg);}
+
+/* ===== Calendar day-list: appointment row with status icon + edit/delete ===== */
+.cal-appt-row{align-items:center;gap:12px;}
 .cal-appt-actions{display:flex;flex-direction:column;gap:4px;flex:none;}
 .edit-btn{background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:16px;padding:4px;border-radius:8px;}
 .edit-btn:hover, .edit-btn:active{color:var(--gold);background:var(--gold-soft);}
@@ -216,5 +220,12 @@ header::after{
 .btn-confirm{background:var(--notready);color:white;}
 .btn-cancel:hover, .btn-cancel:active{background:var(--gold-soft);}
 .btn-confirm:hover, .btn-confirm:active{background:#a03f2f;}
+
+/* ===== Upcoming appointments popup (auto-shown on load) ===== */
+.upcoming-modal-box{max-width:420px;text-align:left;max-height:80vh;display:flex;flex-direction:column;}
+.upcoming-modal-title{font-size:19px;font-weight:700;text-align:center;}
+.upcoming-modal-sub{font-size:14px;color:var(--ink-soft);text-align:center;margin:4px 0 16px;}
+.upcoming-modal-list{overflow-y:auto;margin-bottom:16px;}
+.upcoming-modal-list .appt-card:last-child{margin-bottom:0;}
 
 .footnote{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:26px;}
