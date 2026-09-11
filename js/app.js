@@ -1,7 +1,11 @@
 // ================= STATE =================
+// guideItems คือ "ต้นแบบ" (template) ของรายการแนะนำ/เช็คลิสต์เริ่มต้น — ใช้ร่วมกันทุกนัดหมาย
+// การเลือก/ลบรายการแนะนำในนัดหมายหนึ่งๆ ต้อง "ไม่" ไปแก้ไขอาเรย์นี้เด็ดขาด (ดูฟังก์ชัน
+// renderSuggestChips / renderAddSuggestChips) มิเช่นนั้นรายการจะหายไปจากนัดหมายอื่นด้วย
 let guideItems = [
-  'งดน้ำงดอาหาร 8 ชม.ก่อนนัด','พกผลตรวจเดิม (ถ้ามี)','พาญาติหรือผู้ดูแลไปด้วย',
-  'พกแว่นตา / เครื่องช่วยฟัง','เตรียมคำถามที่จะถามหมอ','พกสมุดบันทึกอาการ'
+  'บัตรประจำตัวประชาชน','บัตรสิทธิการรักษา','ผลตรวจเดิม/ใบส่งตัว',
+  'งดน้ำงดอาหาร 8 ชั่วโมงก่อนนัด','พกแว่นตา/เครื่องช่วยฟัง','แจ้งญาติที่จะไปด้วย',
+  'คำถามที่จะถามหมอ','ยา/ภาพฉลากยาที่รับประทาน'
 ];
 
 function iso(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
@@ -70,7 +74,9 @@ function showAddForm(){
   document.getElementById('fMinute').value='';
   selectedNotify = [];
   renderNotifyChips();
-  pendingChecklist = [];
+  // เริ่มเช็คลิสต์ด้วยรายการแนะนำ (default) ทั้งหมดโดยอัตโนมัติ ไม่ต้องแตะเพิ่มเอง
+  // เป็นสำเนาแยกต่างหาก ไม่ใช่ reference กับ guideItems จึงลบ/แก้ในนัดนี้ได้โดยไม่กระทบต้นแบบ
+  pendingChecklist = guideItems.map(text => ({ id:crypto.randomUUID(), text, done:false, source:'guide' }));
   renderPendingChecklist();
   renderAddSuggestChips();
 }
@@ -511,7 +517,9 @@ function renderChecklist(){
     });
     li.querySelector('.check-label').addEventListener('input', e => { item.text = e.target.textContent; });
     li.querySelector('.item-btn').addEventListener('click', () => {
-      if(item.source === 'guide' && !guideItems.includes(item.text)) guideItems.push(item.text);
+      // ลบออกจากเช็คลิสต์ของนัดนี้เท่านั้น — ไม่แตะต้อง guideItems (ต้นแบบ) เลย
+      // ถ้ารายการนี้มาจากต้นแบบ มันจะกลับไปโผล่เป็นตัวเลือกแนะนำของนัดนี้เองโดยอัตโนมัติ
+      // (เพราะ renderSuggestChips คำนวณจาก appt.checklist ปัจจุบันทุกครั้ง)
       appt.checklist = appt.checklist.filter(i => i.id !== item.id);
       renderChecklist(); renderSuggestChips();
     });
@@ -523,17 +531,19 @@ function renderChecklist(){
 function renderSuggestChips(){
   const el = document.getElementById('suggestChips');
   el.innerHTML = '';
-  if(guideItems.length === 0){
+  const appt = currentAppt();
+  // ไม่โชว์ซ้ำรายการที่มีอยู่ในเช็คลิสต์ของนัดนี้แล้ว แต่ไม่ตัดออกจาก guideItems จริง
+  // เพื่อไม่ให้กระทบนัดหมายอื่นหรือฟอร์มเพิ่มนัดใหม่
+  const available = guideItems.filter(g => !appt.checklist.some(item => item.text === g));
+  if(available.length === 0){
     el.innerHTML = '<span class="empty-note">ยังไม่มีรายการแนะนำ ลองเพิ่มได้ที่หน้าจัดการ</span>';
     return;
   }
-  guideItems.forEach(text => {
+  available.forEach(text => {
     const chip = document.createElement('span');
     chip.className = 'chip'; chip.textContent = text;
     chip.addEventListener('click', () => {
-      const appt = currentAppt();
       appt.checklist.push({ id:crypto.randomUUID(), text, done:false, source:'guide' });
-      guideItems = guideItems.filter(g => g !== text);
       renderChecklist(); renderSuggestChips();
     });
     el.appendChild(chip);
