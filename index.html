@@ -149,6 +149,16 @@
   </div>
 </div>
 
+<!-- Upcoming appointments popup (เด้งอัตโนมัติตอนเปิดแอป ถ้ามีนัดเหลือน้อยกว่า 5 วัน) -->
+<div class="modal-overlay hidden" id="upcomingModal">
+  <div class="modal-box upcoming-modal-box">
+    <div class="upcoming-modal-title">🔔 นัดหมายที่ใกล้ถึง</div>
+    <p class="upcoming-modal-sub">มีนัดหมายที่เหลือเวลาน้อยกว่า 5 วัน</p>
+    <div class="upcoming-modal-list" id="upcomingModalList"></div>
+    <button class="form-submit" onclick="closeUpcomingPopup()">ปิด</button>
+  </div>
+</div>
+
 <script src="js/app.js"></script>
 </body>
 </html>
