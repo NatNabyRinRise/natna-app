@@ -200,6 +200,10 @@ header::after{
 .preview-list li{display:flex;justify-content:space-between;gap:14px;padding:12px 2px;border-bottom:1px solid var(--silver-soft);font-size:15px;}
 .preview-label{color:var(--ink-soft);flex:none;}
 .preview-value{color:var(--ink);font-weight:600;text-align:right;}
+.preview-checklist-section{margin-top:18px;}
+.preview-checklist-list{list-style:none;margin:8px 0 0;padding:0;}
+.preview-checklist-list li{font-size:15px;color:var(--ink);padding:8px 2px;border-bottom:1px solid var(--silver-soft);}
+.preview-checklist-list li.empty-note{border-bottom:none;padding:4px 2px;}
 .preview-actions{display:flex;gap:10px;margin-top:18px;}
 .btn-edit, .btn-confirm-appt{flex:1;padding:13px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;}
 .btn-edit{background:var(--silver-soft);color:var(--ink);}
