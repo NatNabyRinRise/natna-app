@@ -462,6 +462,26 @@ function renderCalDayList(dayAppts){
   });
 }
 
+// ปัดนิ้วซ้าย-ขวาบนตารางปฏิทินเพื่อเปลี่ยนเดือน (เพิ่มเติมจากปุ่มลูกศร ‹ ›)
+// แนบ listener ไว้ที่ #calGrid ตัวเดียว (ตัว container ไม่ได้ถูกสร้างใหม่ทุกครั้งที่ renderCalendar()
+// แค่ innerHTML ข้างในถูกเขียนทับ) จึงไม่ต้องผูกใหม่ทุกครั้งที่ปฏิทิน render
+(function setupCalendarSwipe(){
+  const grid = document.getElementById('calGrid');
+  const SWIPE_THRESHOLD = 50; // px
+  let touchStartX = 0, touchStartY = 0;
+  grid.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive:true });
+  grid.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if(Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)){
+      changeMonth(dx < 0 ? 1 : -1); // ปัดซ้าย = เดือนถัดไป, ปัดขวา = เดือนก่อนหน้า
+    }
+  }, { passive:true });
+})();
+
 // ================= Detail page (checklist) =================
 function currentAppt(){ return appointments.find(a => a.id === currentApptId); }
 
