@@ -71,6 +71,18 @@
         <label>แจ้งเตือนล่วงหน้า (เลือกได้หลายอัน ไม่บังคับ)</label>
         <div class="notify-chips" id="notifyChips"></div>
       </div>
+
+      <div class="form-field"><label>เช็คลิสต์เตรียมตัว (ไม่บังคับ)</label></div>
+      <ul class="checklist" id="addChecklist"></ul>
+      <div class="add-row">
+        <input type="text" id="fNewChecklistItem" placeholder="เพิ่มรายการที่ต้องเตรียม...">
+        <button onclick="addPendingChecklistItem()">เพิ่ม</button>
+      </div>
+      <div class="suggest-head">
+        <div class="suggest-title">รายการแนะนำ (แตะเพื่อเพิ่ม)</div>
+      </div>
+      <div class="suggest-chips" id="addSuggestChips"></div>
+
       <button class="form-submit" onclick="goToPreview()">บันทึก</button>
     </div>
   </div>
@@ -89,6 +101,10 @@
         <li><span class="preview-label">เวลานัด</span><span class="preview-value" id="pTime"></span></li>
         <li><span class="preview-label">แจ้งเตือน</span><span class="preview-value" id="pNotify"></span></li>
       </ul>
+      <div class="preview-checklist-section">
+        <div class="suggest-title">รายการเตรียมตัว</div>
+        <ul class="preview-checklist-list" id="pChecklist"></ul>
+      </div>
       <div class="preview-actions">
         <button class="btn-edit" onclick="editAppointment()">แก้ไข</button>
         <button class="btn-confirm-appt" onclick="confirmAppointment()">ยืนยัน</button>

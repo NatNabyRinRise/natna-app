@@ -36,6 +36,7 @@ const NOTIFY_OPTIONS = [
 let selectedNotify = [];
 let pendingAppt = null; // ข้อมูลนัดหมายที่กรอกไว้ รอตรวจสอบในหน้า Preview
 let editingApptId = null; // ถ้าไม่ใช่ null แปลว่ากำลังแก้ไขนัดหมายเดิม (ไม่ใช่เพิ่มใหม่)
+let pendingChecklist = []; // เช็คลิสต์ที่กรอกไว้ในหน้าเพิ่ม/แก้ไขนัด (ยังไม่บันทึกจริงจนกว่าจะกดยืนยัน)
 
 // ไอคอนแทนสถานะนัดหมาย (ใช้ทั้งหน้าแรกและหน้าปฏิทิน)
 // กฎ: วันนี้ = หมอ, น้อยกว่า 3 วัน (ไม่ใช่วันนี้) = ไฟ, ไกลกว่านั้นหรือหมดอายุแล้ว = น้ำแข็ง
@@ -69,6 +70,9 @@ function showAddForm(){
   document.getElementById('fMinute').value='';
   selectedNotify = [];
   renderNotifyChips();
+  pendingChecklist = [];
+  renderPendingChecklist();
+  renderAddSuggestChips();
 }
 function editApptFromList(id){
   // เปิดฟอร์มเดิม พร้อมข้อมูลนัดหมายที่มีอยู่แล้ว สำหรับปุ่ม "แก้ไข" ในรายการหน้าปฏิทิน
@@ -87,6 +91,9 @@ function editApptFromList(id){
   document.getElementById('fMinute').value = m;
   selectedNotify = appt.notifications ? [...appt.notifications] : [];
   renderNotifyChips();
+  pendingChecklist = appt.checklist ? appt.checklist.map(item => ({...item})) : [];
+  renderPendingChecklist();
+  renderAddSuggestChips();
 }
 function editAppointment(){
   // กลับไปหน้ากรอกข้อมูล โดยไม่ล้างข้อมูลที่กรอกไว้ (สำหรับปุ่ม "แก้ไข" จากหน้า Preview)
@@ -252,6 +259,63 @@ function renderNotifyChips(){
   });
 }
 
+// เช็คลิสต์เตรียมตัวที่กรอกในหน้าเพิ่ม/แก้ไขนัด (ก่อนบันทึกจริง)
+function renderPendingChecklist(){
+  const checklistEl = document.getElementById('addChecklist');
+  checklistEl.innerHTML = '';
+  pendingChecklist.forEach(item => {
+    const li = document.createElement('li');
+    li.className = 'check-item' + (item.done ? ' done' : '');
+    li.innerHTML = `
+      <div class="check-box"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7l3.5 3.5L12 3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <span class="check-label" contenteditable="true">${item.text}</span>
+      <button class="item-btn" title="ลบ">✕</button>
+    `;
+    li.querySelector('.check-box').addEventListener('click', () => {
+      item.done = !item.done; li.classList.toggle('done');
+    });
+    li.querySelector('.check-label').addEventListener('input', e => { item.text = e.target.textContent; });
+    li.querySelector('.item-btn').addEventListener('click', () => {
+      pendingChecklist = pendingChecklist.filter(i => i.id !== item.id);
+      renderPendingChecklist();
+      renderAddSuggestChips();
+    });
+    checklistEl.appendChild(li);
+  });
+}
+
+function renderAddSuggestChips(){
+  const el = document.getElementById('addSuggestChips');
+  el.innerHTML = '';
+  // ไม่เอารายการแนะนำที่ถูกเพิ่มไปแล้วมาแสดงซ้ำ แต่ยังไม่ตัดออกจาก guideItems จริง
+  // เพราะยังไม่ได้กดยืนยันบันทึก (ถ้ากดยกเลิกออกจากหน้านี้ รายการแนะนำต้องไม่หายไปไหน)
+  const available = guideItems.filter(g => !pendingChecklist.some(i => i.text === g));
+  if(available.length === 0){
+    el.innerHTML = '<span class="empty-note">ยังไม่มีรายการแนะนำ</span>';
+    return;
+  }
+  available.forEach(text => {
+    const chip = document.createElement('span');
+    chip.className = 'chip'; chip.textContent = text;
+    chip.addEventListener('click', () => {
+      pendingChecklist.push({ id:crypto.randomUUID(), text, done:false, source:'guide' });
+      renderPendingChecklist();
+      renderAddSuggestChips();
+    });
+    el.appendChild(chip);
+  });
+}
+
+function addPendingChecklistItem(){
+  const input = document.getElementById('fNewChecklistItem');
+  const text = input.value.trim();
+  if(!text) return;
+  pendingChecklist.push({ id:crypto.randomUUID(), text, done:false, source:'custom' });
+  input.value = '';
+  renderPendingChecklist();
+}
+document.getElementById('fNewChecklistItem').addEventListener('keypress', e => { if(e.key==='Enter') addPendingChecklistItem(); });
+
 function goToPreview(){
   const name = document.getElementById('fName').value.trim();
   const place = document.getElementById('fPlace').value.trim();
@@ -260,10 +324,10 @@ function goToPreview(){
   const hour = document.getElementById('fHour').value;
   const minute = document.getElementById('fMinute').value;
   if(!name || !place || !dept || !date || !hour || !minute){
-    alert('กรุณากรอกข้อมูลให้ครบทุกช่องก่อนนะคะ (ยกเว้นช่องแจ้งเตือน)');
+    alert('กรุณากรอกข้อมูลให้ครบทุกช่องก่อนนะคะ (ยกเว้นช่องแจ้งเตือนและเช็คลิสต์)');
     return;
   }
-  pendingAppt = { name, place, dept, date, time:`${hour}:${minute}`, notifications:[...selectedNotify] };
+  pendingAppt = { name, place, dept, date, time:`${hour}:${minute}`, notifications:[...selectedNotify], checklist:pendingChecklist.map(item => ({...item})) };
   document.getElementById('previewPageTitle').textContent = editingApptId ? 'ตรวจสอบการแก้ไขนัดหมาย' : 'ตรวจสอบข้อมูลนัดหมาย';
   renderPreview();
   hideAllPages();
@@ -278,17 +342,30 @@ function renderPreview(){
   document.getElementById('pTime').textContent = `${pendingAppt.time} น.`;
   const labels = pendingAppt.notifications.map(v => NOTIFY_OPTIONS.find(o => o.value === v).label);
   document.getElementById('pNotify').textContent = labels.length ? `${labels.join(', ')} ก่อนนัด` : 'ไม่ได้ตั้งการแจ้งเตือน';
+
+  const clEl = document.getElementById('pChecklist');
+  clEl.innerHTML = '';
+  if(pendingAppt.checklist.length === 0){
+    clEl.innerHTML = '<li class="empty-note">ยังไม่ได้เพิ่มรายการเตรียมตัว</li>';
+  } else {
+    pendingAppt.checklist.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item.text;
+      clEl.appendChild(li);
+    });
+  }
 }
 
 function confirmAppointment(){
   if(editingApptId){
     const appt = appointments.find(a => a.id === editingApptId);
-    Object.assign(appt, pendingAppt); // แก้ไขเฉพาะข้อมูลนัดหมาย ไม่แตะเช็คลิสต์เดิม
+    Object.assign(appt, pendingAppt); // รวมเช็คลิสต์ที่แก้ไขด้วย
     editingApptId = null;
   } else {
-    appointments.push({ id:crypto.randomUUID(), ...pendingAppt, checklist:[] });
+    appointments.push({ id:crypto.randomUUID(), ...pendingAppt });
   }
   pendingAppt = null;
+  pendingChecklist = [];
   showHome();
 }
 
