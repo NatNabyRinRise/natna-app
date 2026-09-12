@@ -235,7 +235,8 @@ function checkUpcomingPopup(){
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
       </div>
     `;
-    card.addEventListener('click', () => { closeUpcomingPopup(); showDetail(appt.id); });
+    // แตะการ์ดใน pop-up ให้ไปหน้าแก้ไขนัดหมาย เหมือนกับปุ่ม "แก้ไข" ในการ์ดหน้าแรก/ปฏิทิน
+    card.addEventListener('click', () => { closeUpcomingPopup(); editApptFromList(appt.id); });
     el.appendChild(card);
   });
   document.getElementById('upcomingModal').classList.remove('hidden');
