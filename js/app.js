@@ -69,6 +69,12 @@ const NOTIFY_OPTIONS = [
   { value:'3h', label:'3 ชม.' },
   { value:'1h', label:'1 ชม.' }
 ];
+// แปลงค่าตัวเลือกแจ้งเตือน (เช่น '3d', '1h') เป็นระยะเวลาหน่วยมิลลิวินาที ใช้เทียบกับเวลาที่เหลือจริง
+function notifyThresholdMs(value){
+  const n = parseInt(value, 10);
+  const unit = value.slice(-1); // 'd' หรือ 'h'
+  return unit === 'h' ? n * 60 * 60 * 1000 : n * 24 * 60 * 60 * 1000;
+}
 let selectedNotify = [];
 let pendingAppt = null; // ข้อมูลนัดหมายที่กรอกไว้ รอตรวจสอบในหน้า Preview
 let editingApptId = null; // ถ้าไม่ใช่ null แปลว่ากำลังแก้ไขนัดหมายเดิม (ไม่ใช่เพิ่มใหม่)
@@ -214,15 +220,42 @@ function renderCardView(){
 }
 
 // ================= Upcoming appointments popup (เด้งอัตโนมัติตอนเปิดแอป) =================
+const DEFAULT_POPUP_THRESHOLD_MS = 5 * 24 * 60 * 60 * 1000; // ค่าเริ่มต้น: น้อยกว่า 5 วัน (ใช้เมื่อนัดนั้นไม่ได้ตั้งค่าแจ้งเตือนไว้เลย)
+
+// เช็คว่านัดหมายไหนควรเด้งแจ้งเตือน โดยเทียบ "เวลาที่เหลือจริง" (นับถึงวันเวลานัดจริง ไม่ใช่แค่นับวัน)
+// กับตัวเลือกแจ้งเตือนล่วงหน้าที่ผู้ใช้เลือกไว้สำหรับนัดนั้น (notifications) — ถ้าเวลาที่เหลือ
+// เท่ากับหรือน้อยกว่าตัวเลือกไหน ถือว่าเข้าเงื่อนไข ถ้าไม่ได้ตั้งค่าไว้เลยใช้กฎเดิม (น้อยกว่า 5 วัน)
 function checkUpcomingPopup(){
-  const upcoming = appointments
-    .filter(a => { const d = apptStatus(a.date).diffDays; return d >= 0 && d < 5; })
-    .sort((a,b) => apptStatus(a.date).diffDays - apptStatus(b.date).diffDays);
+  const now = new Date();
+  const upcoming = [];
+
+  appointments.forEach(appt => {
+    const target = new Date(`${appt.date}T${appt.time}:00`);
+    const remainingMs = target - now;
+    if(remainingMs < 0) return; // นัดผ่านไปแล้ว ไม่ต้องแจ้งเตือน
+
+    const notifs = appt.notifications || [];
+    if(notifs.length > 0){
+      // เข้าเงื่อนไขถ้าเวลาที่เหลือ <= อย่างน้อยหนึ่งตัวเลือกที่เลือกไว้ — ใช้ตัวที่แคบที่สุด
+      // ที่ยังเข้าเงื่อนไขเป็นเหตุผลที่แสดง (ตรงประเด็น/ใกล้เวลาจริงที่สุด)
+      const matched = notifs
+        .filter(v => remainingMs <= notifyThresholdMs(v))
+        .sort((a,b) => notifyThresholdMs(a) - notifyThresholdMs(b));
+      if(matched.length === 0) return;
+      const label = NOTIFY_OPTIONS.find(o => o.value === matched[0]).label;
+      upcoming.push({ appt, remainingMs, reason: `🔔 ถึงกำหนดแจ้งเตือนล่วงหน้า ${label}` });
+    } else if(remainingMs < DEFAULT_POPUP_THRESHOLD_MS){
+      // ไม่ได้ตั้งค่าแจ้งเตือนไว้เลย -> ใช้ค่า default เดิม (น้อยกว่า 5 วัน)
+      upcoming.push({ appt, remainingMs, reason: 'ใกล้ถึงนัด (ยังไม่ได้ตั้งการแจ้งเตือนไว้)' });
+    }
+  });
+
   if(upcoming.length === 0) return; // ไม่มีนัดแบบนี้ ไม่ต้องขึ้น pop-up
+  upcoming.sort((a,b) => a.remainingMs - b.remainingMs);
 
   const el = document.getElementById('upcomingModalList');
   el.innerHTML = '';
-  upcoming.forEach(appt => {
+  upcoming.forEach(({ appt, reason }) => {
     const st = apptStatus(appt.date);
     const iconKey = statusIconKey(st.diffDays);
     const card = document.createElement('div');
@@ -233,6 +266,7 @@ function checkUpcomingPopup(){
         <div class="appt-name">${appt.name}</div>
         <div class="appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
         <div class="appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
+        <div class="popup-reason">${reason}</div>
       </div>
     `;
     // แตะการ์ดใน pop-up ให้ไปหน้าแก้ไขนัดหมาย เหมือนกับปุ่ม "แก้ไข" ในการ์ดหน้าแรก/ปฏิทิน
