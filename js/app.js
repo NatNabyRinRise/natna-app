@@ -199,12 +199,10 @@ function renderCardView(){
         </div>
       </div>
     `;
+    // แตะที่ไหนของการ์ดก็ได้ (รวมปุ่มแก้ไข) ให้ไปหน้าแก้ไขนัดหมายเหมือนกันหมด
+    // มีแค่ปุ่มลบเท่านั้นที่แยกออกไปทำงานของตัวเอง (เด้ง popup ยืนยันก่อนลบ)
     card.addEventListener('click', (e) => {
-      if(e.target.closest('.trash-btn') || e.target.closest('.edit-btn')) return;
-      showDetail(appt.id);
-    });
-    card.querySelector('.edit-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
+      if(e.target.closest('.trash-btn')) return;
       editApptFromList(appt.id);
     });
     card.querySelector('.trash-btn').addEventListener('click', (e) => {
