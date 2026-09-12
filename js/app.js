@@ -22,6 +22,38 @@ let appointments = [
   { id:crypto.randomUUID(), name:'คุณลุงสมชาย รุ่งเรือง', place:'โรงพยาบาลศิริราช', dept:'แผนกกระดูก', date:'2026-10-05', time:'14:30', checklist:[] }
 ];
 
+// ================= Persistence (localStorage) =================
+// บันทึก/โหลด appointments (รวมเช็คลิสต์ของแต่ละนัด) และ guideItems (รายการแนะนำ/default checklist)
+// ทุกครั้งที่มีการเพิ่ม/แก้ไข/ลบ ให้เรียก saveData() ต่อท้าย — ถ้ายังไม่เคยบันทึกไว้เลย (ใช้งานครั้งแรก)
+// loadData() จะคืนค่า false แล้วปล่อยให้ข้อมูลตัวอย่างเริ่มต้นด้านบนนี้ใช้งานต่อไปตามเดิม
+const STORAGE_KEY = 'natna_data_v1';
+
+function saveData(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ appointments, guideItems }));
+  } catch(e) {
+    console.error('บันทึกข้อมูลลง localStorage ไม่สำเร็จ', e);
+  }
+}
+
+function loadData(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return false; // ยังไม่เคยบันทึกไว้ (ใช้งานครั้งแรก) -> ใช้ข้อมูลตัวอย่างเริ่มต้น
+    const data = JSON.parse(raw);
+    if(data && Array.isArray(data.appointments) && Array.isArray(data.guideItems)){
+      appointments = data.appointments;
+      guideItems = data.guideItems;
+      return true;
+    }
+  } catch(e) {
+    console.error('โหลดข้อมูลที่บันทึกไว้ไม่สำเร็จ ใช้ข้อมูลตัวอย่างเริ่มต้นแทน', e);
+  }
+  return false;
+}
+
+loadData(); // โหลดข้อมูลที่เคยบันทึกไว้ทับข้อมูลตัวอย่างเริ่มต้นด้านบน (ถ้ามี)
+
 let currentApptId = null;
 let deleteTargetId = null;
 let calMonth = today.getMonth();
@@ -227,6 +259,7 @@ function confirmDelete(){
   appointments = appointments.filter(a => a.id !== deleteTargetId);
   deleteTargetId = null;
   document.getElementById('confirmModal').classList.add('hidden');
+  saveData();
   renderCardView();
   renderCalendar();
 }
@@ -372,6 +405,7 @@ function confirmAppointment(){
   }
   pendingAppt = null;
   pendingChecklist = [];
+  saveData();
   showHome();
 }
 
@@ -514,13 +548,15 @@ function renderChecklist(){
     `;
     li.querySelector('.check-box').addEventListener('click', () => {
       item.done = !item.done; li.classList.toggle('done'); updateStatus();
+      saveData();
     });
-    li.querySelector('.check-label').addEventListener('input', e => { item.text = e.target.textContent; });
+    li.querySelector('.check-label').addEventListener('input', e => { item.text = e.target.textContent; saveData(); });
     li.querySelector('.item-btn').addEventListener('click', () => {
       // ลบออกจากเช็คลิสต์ของนัดนี้เท่านั้น — ไม่แตะต้อง guideItems (ต้นแบบ) เลย
       // ถ้ารายการนี้มาจากต้นแบบ มันจะกลับไปโผล่เป็นตัวเลือกแนะนำของนัดนี้เองโดยอัตโนมัติ
       // (เพราะ renderSuggestChips คำนวณจาก appt.checklist ปัจจุบันทุกครั้ง)
       appt.checklist = appt.checklist.filter(i => i.id !== item.id);
+      saveData();
       renderChecklist(); renderSuggestChips();
     });
     checklistEl.appendChild(li);
@@ -544,6 +580,7 @@ function renderSuggestChips(){
     chip.className = 'chip'; chip.textContent = text;
     chip.addEventListener('click', () => {
       appt.checklist.push({ id:crypto.randomUUID(), text, done:false, source:'guide' });
+      saveData();
       renderChecklist(); renderSuggestChips();
     });
     el.appendChild(chip);
@@ -556,6 +593,7 @@ function addCustomItem(){
   if(!text) return;
   currentAppt().checklist.push({ id:crypto.randomUUID(), text, done:false, source:'custom' });
   input.value = '';
+  saveData();
   renderChecklist();
 }
 document.getElementById('newItem').addEventListener('keypress', e => { if(e.key==='Enter') addCustomItem(); });
@@ -580,6 +618,7 @@ function renderGuideManageList(){
     row.innerHTML = `<span style="flex:1;">${text}</span><button class="item-btn" title="ลบ">✕</button>`;
     row.querySelector('.item-btn').addEventListener('click', () => {
       guideItems = guideItems.filter(g => g !== text);
+      saveData();
       renderGuideManageList();
     });
     el.appendChild(row);
@@ -591,6 +630,7 @@ function addGuideItem(){
   if(!text) return;
   guideItems.push(text);
   input.value = '';
+  saveData();
   renderGuideManageList();
 }
 document.getElementById('newGuideItem').addEventListener('keypress', e => { if(e.key==='Enter') addGuideItem(); });
