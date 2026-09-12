@@ -468,6 +468,15 @@ function renderCalendar(){
     grid.appendChild(cell);
   }
 
+  // เติมช่องว่างท้ายแถวสุดท้ายให้ครบ 7 ช่อง (วันของเดือนถัดไป) ด้วยสไตล์เดียวกับช่องว่าง
+  // ต้นเดือน ไม่งั้นแถวสุดท้ายจะขาด แล้วเห็นสีพื้นหลังเทาของ .cal-grid โผล่ออกมาแทน
+  const trailingEmpty = (7 - ((firstDay + daysInMonth) % 7)) % 7;
+  for(let i=0;i<trailingEmpty;i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty-cell';
+    grid.appendChild(empty);
+  }
+
   if(selectedCalDate){
     const dayAppts = appointments.filter(a => a.date === selectedCalDate);
     if(dayAppts.length) renderCalDayList(dayAppts); else document.getElementById('calDayList').innerHTML='';
