@@ -233,5 +233,6 @@ header::after{
 .upcoming-modal-sub{font-size:14px;color:var(--ink-soft);text-align:center;margin:4px 0 16px;}
 .upcoming-modal-list{overflow-y:auto;margin-bottom:16px;}
 .upcoming-modal-list .appt-card:last-child{margin-bottom:0;}
+.popup-reason{font-size:12px;font-weight:600;color:var(--gold);margin-top:4px;}
 
 .footnote{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:26px;}
