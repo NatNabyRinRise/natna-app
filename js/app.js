@@ -22,37 +22,42 @@ let appointments = [
   { id:crypto.randomUUID(), name:'คุณลุงสมชาย รุ่งเรือง', place:'โรงพยาบาลศิริราช', dept:'แผนกกระดูก', date:'2026-10-05', time:'14:30', checklist:[] }
 ];
 
-// ================= Persistence (localStorage) =================
-// บันทึก/โหลด appointments (รวมเช็คลิสต์ของแต่ละนัด) และ guideItems (รายการแนะนำ/default checklist)
-// ทุกครั้งที่มีการเพิ่ม/แก้ไข/ลบ ให้เรียก saveData() ต่อท้าย — ถ้ายังไม่เคยบันทึกไว้เลย (ใช้งานครั้งแรก)
-// loadData() จะคืนค่า false แล้วปล่อยให้ข้อมูลตัวอย่างเริ่มต้นด้านบนนี้ใช้งานต่อไปตามเดิม
-const STORAGE_KEY = 'natna_data_v1';
+// ================= Persistence (Supabase) =================
+// เก็บนัดหมาย (รวมเช็คลิสต์ของแต่ละนัด) ไว้ในตาราง `appointments` บน Supabase แทน
+// localStorage เดิม — ดู supabase/schema.sql สำหรับ SQL สร้างตาราง/RLS ที่ต้องรันเองก่อน
+// ส่วน guideItems (รายการแนะนำ/default checklist) ยังเก็บไว้ในโค้ดเหมือนเดิม ไม่มีตารางของตัวเอง
+// (แก้ไขในหน้า "จัดการรายการแนะนำ" จะอยู่แค่ session ปัจจุบัน ไม่ persist ข้ามการรีเฟรช)
+const SUPABASE_URL = 'https://bwyfgwbodupkhnmyalch.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3eWZnd2JvZHVwa2hubXlhbGNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyNjU0MDIsImV4cCI6MjEwNDg0MTQwMn0.xIi6FnIKj_ggNfofxSjdrFNBj56ieFqXEsZjHoItuw8';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const APPT_COLUMNS = 'id,name,place,dept,date,time,notifications,checklist';
 
-function saveData(){
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ appointments, guideItems }));
-  } catch(e) {
-    console.error('บันทึกข้อมูลลง localStorage ไม่สำเร็จ', e);
-  }
+async function fetchAppointmentsFromDb(){
+  const { data, error } = await db.from('appointments').select(APPT_COLUMNS).order('date');
+  if(error) throw error;
+  return data;
 }
-
-function loadData(){
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return false; // ยังไม่เคยบันทึกไว้ (ใช้งานครั้งแรก) -> ใช้ข้อมูลตัวอย่างเริ่มต้น
-    const data = JSON.parse(raw);
-    if(data && Array.isArray(data.appointments) && Array.isArray(data.guideItems)){
-      appointments = data.appointments;
-      guideItems = data.guideItems;
-      return true;
-    }
-  } catch(e) {
-    console.error('โหลดข้อมูลที่บันทึกไว้ไม่สำเร็จ ใช้ข้อมูลตัวอย่างเริ่มต้นแทน', e);
-  }
-  return false;
+async function insertAppointmentToDb(fields){
+  const { data, error } = await db.from('appointments').insert(fields).select(APPT_COLUMNS).single();
+  if(error) throw error;
+  return data;
 }
-
-loadData(); // โหลดข้อมูลที่เคยบันทึกไว้ทับข้อมูลตัวอย่างเริ่มต้นด้านบน (ถ้ามี)
+async function updateAppointmentInDb(id, patch){
+  const { error } = await db.from('appointments').update(patch).eq('id', id);
+  if(error) throw error;
+}
+async function deleteAppointmentFromDb(id){
+  const { error } = await db.from('appointments').delete().eq('id', id);
+  if(error) throw error;
+}
+// เรียกหลัง mutate appt.checklist ในหน่วยความจำแล้ว (fire-and-forget: ไม่บล็อก UI รอ network
+// เหมือนเดิม แต่ error จริงจะแจ้งผู้ใช้ด้วย alert ให้รู้ว่าอาจไม่ได้ถูกบันทึกขึ้นเซิร์ฟเวอร์)
+function persistChecklist(appt){
+  updateAppointmentInDb(appt.id, { checklist: appt.checklist }).catch(e => {
+    console.error('บันทึกเช็คลิสต์ขึ้น Supabase ไม่สำเร็จ', e);
+    alert('บันทึกเช็คลิสต์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+  });
+}
 
 let currentApptId = null;
 let deleteTargetId = null;
@@ -289,12 +294,17 @@ function cancelDelete(){
   document.getElementById('confirmModal').classList.add('hidden');
 }
 function confirmDelete(){
-  appointments = appointments.filter(a => a.id !== deleteTargetId);
+  const id = deleteTargetId;
+  // ลบออกจากหน้าจอทันที (เร็วเหมือนเดิม) แล้วค่อยยิงลบขึ้น Supabase ตามหลังแบบไม่บล็อก UI
+  appointments = appointments.filter(a => a.id !== id);
   deleteTargetId = null;
   document.getElementById('confirmModal').classList.add('hidden');
-  saveData();
   renderCardView();
   renderCalendar();
+  deleteAppointmentFromDb(id).catch(e => {
+    console.error('ลบนัดหมายออกจาก Supabase ไม่สำเร็จ', e);
+    alert('ลบนัดหมายไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+  });
 }
 
 // ================= Add appointment =================
@@ -428,18 +438,34 @@ function renderPreview(){
   }
 }
 
-function confirmAppointment(){
+async function confirmAppointment(){
   if(editingApptId){
     const appt = appointments.find(a => a.id === editingApptId);
-    Object.assign(appt, pendingAppt); // รวมเช็คลิสต์ที่แก้ไขด้วย
+    const patch = pendingAppt;
+    Object.assign(appt, patch); // รวมเช็คลิสต์ที่แก้ไขด้วย — อัปเดตหน้าจอทันทีเหมือนเดิม
+    const id = editingApptId;
     editingApptId = null;
+    pendingAppt = null;
+    pendingChecklist = [];
+    showHome();
+    // ยิงอัปเดตขึ้น Supabase ตามหลังแบบไม่บล็อก UI (id เดิมอยู่แล้ว ไม่ต้องรอ)
+    updateAppointmentInDb(id, patch).catch(e => {
+      console.error('บันทึกการแก้ไขนัดหมายขึ้น Supabase ไม่สำเร็จ', e);
+      alert('บันทึกการแก้ไขไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    });
   } else {
-    appointments.push({ id:crypto.randomUUID(), ...pendingAppt });
+    // นัดใหม่ต้องรอ id จริงจาก Supabase ก่อน ถึงจะเก็บเข้า appointments ในหน่วยความจำได้
+    try {
+      const newAppt = await insertAppointmentToDb(pendingAppt);
+      appointments.push(newAppt);
+      pendingAppt = null;
+      pendingChecklist = [];
+      showHome();
+    } catch(e) {
+      console.error('บันทึกนัดหมายใหม่ขึ้น Supabase ไม่สำเร็จ', e);
+      alert('บันทึกนัดหมายไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    }
   }
-  pendingAppt = null;
-  pendingChecklist = [];
-  saveData();
-  showHome();
 }
 
 // ================= Home view toggle =================
@@ -590,15 +616,15 @@ function renderChecklist(){
     `;
     li.querySelector('.check-box').addEventListener('click', () => {
       item.done = !item.done; li.classList.toggle('done'); updateStatus();
-      saveData();
+      persistChecklist(appt);
     });
-    li.querySelector('.check-label').addEventListener('input', e => { item.text = e.target.textContent; saveData(); });
+    li.querySelector('.check-label').addEventListener('input', e => { item.text = e.target.textContent; persistChecklist(appt); });
     li.querySelector('.item-btn').addEventListener('click', () => {
       // ลบออกจากเช็คลิสต์ของนัดนี้เท่านั้น — ไม่แตะต้อง guideItems (ต้นแบบ) เลย
       // ถ้ารายการนี้มาจากต้นแบบ มันจะกลับไปโผล่เป็นตัวเลือกแนะนำของนัดนี้เองโดยอัตโนมัติ
       // (เพราะ renderSuggestChips คำนวณจาก appt.checklist ปัจจุบันทุกครั้ง)
       appt.checklist = appt.checklist.filter(i => i.id !== item.id);
-      saveData();
+      persistChecklist(appt);
       renderChecklist(); renderSuggestChips();
     });
     checklistEl.appendChild(li);
@@ -622,7 +648,7 @@ function renderSuggestChips(){
     chip.className = 'chip'; chip.textContent = text;
     chip.addEventListener('click', () => {
       appt.checklist.push({ id:crypto.randomUUID(), text, done:false, source:'guide' });
-      saveData();
+      persistChecklist(appt);
       renderChecklist(); renderSuggestChips();
     });
     el.appendChild(chip);
@@ -633,9 +659,10 @@ function addCustomItem(){
   const input = document.getElementById('newItem');
   const text = input.value.trim();
   if(!text) return;
-  currentAppt().checklist.push({ id:crypto.randomUUID(), text, done:false, source:'custom' });
+  const appt = currentAppt();
+  appt.checklist.push({ id:crypto.randomUUID(), text, done:false, source:'custom' });
   input.value = '';
-  saveData();
+  persistChecklist(appt);
   renderChecklist();
 }
 document.getElementById('newItem').addEventListener('keypress', e => { if(e.key==='Enter') addCustomItem(); });
@@ -659,8 +686,8 @@ function renderGuideManageList(){
     row.className = 'guide-row';
     row.innerHTML = `<span style="flex:1;">${text}</span><button class="item-btn" title="ลบ">✕</button>`;
     row.querySelector('.item-btn').addEventListener('click', () => {
+      // guideItems ไม่ persist ไปไหน (เก็บไว้ในโค้ดเหมือนเดิม) แก้ที่นี่จะอยู่แค่ session นี้
       guideItems = guideItems.filter(g => g !== text);
-      saveData();
       renderGuideManageList();
     });
     el.appendChild(row);
@@ -672,7 +699,6 @@ function addGuideItem(){
   if(!text) return;
   guideItems.push(text);
   input.value = '';
-  saveData();
   renderGuideManageList();
 }
 document.getElementById('newGuideItem').addEventListener('keypress', e => { if(e.key==='Enter') addGuideItem(); });
@@ -683,7 +709,18 @@ document.getElementById('newGuideItem').addEventListener('keypress', e => { if(e
 // ที่ใช้นิ้วแตะและต้องเห็น feedback ทางสีชัดเจนว่ากดโดนแล้ว
 document.addEventListener('touchstart', function(){}, { passive:true });
 
-populateTimeSelects();
-renderNotifyChips();
-showHome();
-checkUpcomingPopup();
+// โหลดนัดหมายจาก Supabase ก่อนแสดงหน้าแรก (แสดง #loadingState ระหว่างรอ) — ถ้าโหลดไม่สำเร็จ
+// (ยังไม่ได้รัน supabase/schema.sql, เน็ตล่ม ฯลฯ) ใช้ข้อมูลตัวอย่างเริ่มต้นที่ตั้งไว้ด้านบนแทนไปก่อน
+async function initApp(){
+  try {
+    appointments = await fetchAppointmentsFromDb();
+  } catch(e) {
+    console.error('โหลดข้อมูลจาก Supabase ไม่สำเร็จ ใช้ข้อมูลตัวอย่างเริ่มต้นแทนชั่วคราว', e);
+  }
+  document.getElementById('loadingState').classList.add('hidden');
+  populateTimeSelects();
+  renderNotifyChips();
+  showHome();
+  checkUpcomingPopup();
+}
+initApp();
