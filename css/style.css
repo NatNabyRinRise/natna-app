@@ -235,5 +235,3 @@ header{margin-bottom:12px;display:flex;align-items:center;justify-content:center
 .upcoming-modal-list{overflow-y:auto;margin-bottom:16px;}
 .upcoming-modal-list .appt-card:last-child{margin-bottom:0;}
 .popup-reason{font-size:12px;font-weight:600;color:var(--gold-hover);margin-top:4px;}
-
-.footnote{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:26px;}
