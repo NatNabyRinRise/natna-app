@@ -711,16 +711,30 @@ document.addEventListener('touchstart', function(){}, { passive:true });
 
 // โหลดนัดหมายจาก Supabase ก่อนแสดงหน้าแรก (แสดง #loadingState ระหว่างรอ) — ถ้าโหลดไม่สำเร็จ
 // (ยังไม่ได้รัน supabase/schema.sql, เน็ตล่ม ฯลฯ) ใช้ข้อมูลตัวอย่างเริ่มต้นที่ตั้งไว้ด้านบนแทนไปก่อน
+//
+// สำคัญ: ต้อง await ให้ appointments โหลดมาครบก่อน แล้วค่อยเรียก checkUpcomingPopup() —
+// ห้ามเรียกก่อนหน้านั้นเด็ดขาด (เช่น ตอน appointments ยังเป็นค่าเริ่มต้นตอนประกาศตัวแปร)
+// ไม่งั้นป๊อปอัปจะคำนวณจากข้อมูลที่ยังโหลดไม่ครบ/ยังไม่ใช่ของจริงจาก Supabase
 async function initApp(){
+  let loadFailed = false;
   try {
     appointments = await fetchAppointmentsFromDb();
   } catch(e) {
+    loadFailed = true;
     console.error('โหลดข้อมูลจาก Supabase ไม่สำเร็จ ใช้ข้อมูลตัวอย่างเริ่มต้นแทนชั่วคราว', e);
   }
   document.getElementById('loadingState').classList.add('hidden');
   populateTimeSelects();
   renderNotifyChips();
   showHome();
-  checkUpcomingPopup();
+  if(loadFailed){
+    // โหลดข้อมูลจริงไม่สำเร็จ -> appointments ตอนนี้คือข้อมูลตัวอย่าง (mock) ที่ hardcode ไว้
+    // ไม่ใช่นัดหมายจริงของผู้ใช้ ถ้าเด้งป๊อปอัป "นัดใกล้ถึง" ไปด้วยจะยิ่งทำให้เข้าใจผิดว่าเป็น
+    // รายการนัดจริง (ทั้งที่ไม่ใช่ และอาจดูเหมือนรายการไม่ครบเมื่อเทียบกับนัดจริงที่มีอยู่) จึง
+    // ไม่เรียก checkUpcomingPopup() ในกรณีนี้ และแจ้งผู้ใช้ตรง ๆ แทนว่าโหลดข้อมูลจริงไม่สำเร็จ
+    alert('โหลดข้อมูลนัดหมายจาก Supabase ไม่สำเร็จ กำลังแสดงข้อมูลตัวอย่างชั่วคราวแทน กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองรีโหลดหน้าใหม่');
+  } else {
+    checkUpcomingPopup();
+  }
 }
 initApp();
