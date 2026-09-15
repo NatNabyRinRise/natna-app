@@ -103,6 +103,18 @@ function showHome(){
   document.getElementById('homePage').classList.remove('hidden');
   renderCardView();
   renderCalendar();
+  renderMascotBadge();
+}
+// อัปเดตตัวเลขบนป้ายมาสคอต = จำนวนนัดหมายที่เหลือน้อยกว่า 5 วัน (นับรวมวันนี้ ไม่นับที่หมดอายุ
+// ไปแล้ว) เรียกจาก showHome() ทุกครั้งที่กลับมาหน้าแรก จึงอัปเดตตามข้อมูลจริงเสมอเมื่อมีการ
+// เพิ่ม/แก้ไข/ลบนัดหมาย (ทุก flow ที่เปลี่ยนแปลงนัดหมายจะเรียก showHome() อยู่แล้ว)
+function renderMascotBadge(){
+  const count = appointments.filter(a => {
+    const diffDays = apptStatus(a.date).diffDays;
+    return diffDays >= 0 && diffDays < 5;
+  }).length;
+  const el = document.getElementById('mascotBadgeCount');
+  if(el) el.textContent = count;
 }
 function showAddForm(){
   editingApptId = null;

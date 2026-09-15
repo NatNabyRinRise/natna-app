@@ -5,17 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>นัดนะ NatNa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=K2D:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand-logo"><img src="assets/logo.png" alt="NatNa logo"></div>
-    <div class="brand-text">
-      <div class="brand"><span class="brand-th">นัดนะ</span></div>
-      <p class="tagline">ช่วยเตรียมความพร้อมก่อนไปพบแพทย์ตามนัด</p>
-    </div>
+    <div class="brand-logo"><img src="assets/logo-new.png" alt="NatNa logo"></div>
   </header>
 
   <!-- ============ LOADING STATE (ระหว่างโหลดข้อมูลจาก Supabase ตอนเปิดแอป) ============ -->
@@ -23,6 +19,17 @@
 
   <!-- ============ HOME PAGE ============ -->
   <div id="homePage" class="hidden">
+    <!-- มาสคอต: แสดงจำนวนนัดหมายที่เหลือน้อยกว่า 5 วัน อัปเดตทุกครั้งที่ showHome() ทำงาน -->
+    <div class="mascot-section">
+      <div class="mascot-frame">
+        <img src="assets/mascot-cat.png" alt="มาสคอตแมวของ NatNa" class="mascot-img">
+        <div class="mascot-badge">
+          <span class="mascot-badge-count" id="mascotBadgeCount">0</span>
+          <span class="mascot-badge-label">นัดใกล้ถึง</span>
+        </div>
+      </div>
+    </div>
+
     <div class="home-toolbar">
       <div class="view-toggle">
         <button id="btnCardView" class="active" onclick="setHomeView('card')">การ์ด</button>
@@ -34,9 +41,6 @@
     <div id="cardView"></div>
 
     <div id="calendarView" class="hidden">
-      <div class="cal-page-header">
-        <div class="cal-page-title"><span class="cal-title-prefix">ปฏิทิน</span> <span class="brand-th">นัดนะ</span></div>
-      </div>
       <div class="cal-nav">
         <button onclick="changeMonth(-1)">‹</button>
         <div class="cal-month-label" id="calMonthLabel"></div>
@@ -44,9 +48,8 @@
       </div>
       <div class="cal-grid" id="calGrid"></div>
       <div class="cal-legend">
+        <span class="legend-item"><span class="legend-dot legend-dot-appt"></span>มีนัด</span>
         <span class="legend-item"><span class="legend-dot legend-dot-today"></span>วันนี้</span>
-        <span class="legend-item"><span class="legend-dot legend-dot-upcoming"></span>ยังไม่ถึงนัด</span>
-        <span class="legend-item"><span class="legend-dot legend-dot-expired"></span>หมดอายุ</span>
       </div>
       <div class="cal-day-list" id="calDayList"></div>
     </div>

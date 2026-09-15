@@ -17,6 +17,9 @@
 - **รายการแนะนำ (guide items)**: ชิปคำแนะนำที่แตะเพื่อเพิ่มเข้าเช็คลิสต์ได้ทันที
   และมีหน้าแยกสำหรับจัดการ (เพิ่ม/ลบ) รายการแนะนำเหล่านี้
 - **ลบนัดหมาย**: มี modal ยืนยันก่อนลบ
+- **มาสคอต (หน้าแรก)**: การ์ตูนแมวใต้ header พร้อมป้ายวงกลมสีทองแสดงจำนวนนัดหมายที่เหลือ
+  น้อยกว่า 5 วัน คำนวณสดจาก `appointments` ทุกครั้งที่กลับมาหน้าแรก (`renderMascotBadge()`
+  เรียกจาก `showHome()`)
 
 **นัดหมาย (รวมเช็คลิสต์ของแต่ละนัด)** เก็บอยู่บน **Supabase** (ตาราง `appointments` — ดู
 `supabase/schema.sql`) ผ่าน `@supabase/supabase-js` ที่โหลดจาก CDN — รีโหลดหน้าจะดึงข้อมูล
@@ -39,11 +42,15 @@ schema.sql, เน็ตล่ม ฯลฯ) จะ fallback ไปใช้ข�
 - **Supabase** เป็น backend สำหรับตาราง `appointments` เท่านั้น — โหลด client library ผ่าน
   `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@.../dist/umd/supabase.js">`
   ก่อน `js/app.js` (ยังไม่มี build step อยู่ดี ใช้ CDN + global `window.supabase.createClient()`)
-- ฟอนต์ **Sarabun** จาก Google Fonts (โหลดผ่าน `<link>` ใน `<head>`)
+- ฟอนต์ **K2D** จาก Google Fonts (โหลดผ่าน `<link>` ใน `<head>`) ใช้ทั้งหัวข้อและเนื้อความ
 - ใช้ `crypto.randomUUID()` ของเบราว์เซอร์สำหรับสร้าง id ของรายการเช็คลิสต์ (id ของนัดหมาย
   แต่ละนัดมาจาก Postgres `gen_random_uuid()` ตอน insert แทน)
-- CSS ธรรมดา ใช้ CSS custom properties (`:root { --gold: ...; --ink: ...; }`)
-  เป็น design tokens สำหรับโทนสี ไม่มี CSS framework (ไม่ใช่ Tailwind/Bootstrap)
+- CSS ธรรมดา ใช้ CSS custom properties (`:root { --gold: ...; --ink: ...; }`) เป็น design
+  tokens สำหรับโทนสี ไม่มี CSS framework (ไม่ใช่ Tailwind/Bootstrap) — โทนสีหลักไล่เฉด
+  เขียวมะนาว (`--lime`) → เขียว (`--green`) → เขียวหัวเป็ดเข้ม (`--teal-dark`) ดึงจากโลโก้
+  `assets/logo-new.png` โดย `--ink`/`--ink-soft` ก็อิงโทนเขียวหัวเป็ดเช่นกัน ส่วน `--gold`
+  (ตัวแปรชื่อเดิม แต่ค่าเปลี่ยนเป็น `#F2A93B`) ใช้เป็นสี contrast สำหรับปุ่มเน้น/สถานะสำคัญ
+  (ปุ่มหลัก, ชิปที่เลือก, ป้ายมาสคอต, วงกลม "วันนี้" ในปฏิทิน) แทนโทนทองเดิม
 - ไม่มี test suite และไม่มี build/deploy script ใด ๆ ในโปรเจกต์นี้
 
 ### วิธีรันดูแอป
@@ -65,7 +72,10 @@ natna-app/
 ├── js/
 │   └── app.js          # ตรรกะแอปทั้งหมด: state, การ render, event handlers
 └── assets/
-    └── logo.png         # โลโก้ NatNa (แยกออกมาจาก base64 ที่เคย inline อยู่ใน HTML)
+    ├── logo.png          # โลโก้เก่า (ไม่ได้ใช้แสดงผลในแอปแล้ว เหลือไว้เผื่ออ้างอิง)
+    ├── logo-new.png      # โลโก้ปัจจุบันที่ใช้ใน header (มีคำว่า "NatNa นัดนะ" อยู่ในภาพแล้ว
+    │                       จึงไม่มีข้อความ/คำโปรยแยกอยู่ข้างๆ อีกต่อไป)
+    └── mascot-cat.png    # ภาพมาสคอตแมว แสดงในกรอบใต้ header ของหน้าแรก
 ```
 
 เดิมโค้ดทั้งหมด (HTML + CSS + JS + โลโก้แบบ base64) อยู่รวมกันในไฟล์ `index.html`
@@ -80,7 +90,8 @@ natna-app/
   `deleteTargetId`, ตัวแปรสถานะปฏิทิน (`calMonth`, `calYear`, `selectedCalDate`)
 - **NAV** — สลับการแสดงผลระหว่างหน้า (`showHome`, `showAddForm`, `showDetail`, `showManage`)
 - **Status helper** — คำนวณสถานะนัดหมาย (`apptStatus`) และจัดรูปแบบวันที่ไทย (`fmtDateTh`)
-- **Card view** — render รายการนัดหมายเป็นการ์ด (`renderCardView`)
+- **Card view** — render รายการนัดหมายเป็นการ์ด (`renderCardView`), ป้ายมาสคอต
+  (`renderMascotBadge` — นับนัดหมายที่เหลือ <5 วัน เรียกจาก `showHome()`)
 - **Delete confirm** — flow ยืนยันการลบ (`askDelete`, `cancelDelete`, `confirmDelete`)
 - **Add appointment** — บันทึกนัดหมายใหม่ (`submitAddForm`)
 - **Calendar view** — render ปฏิทินรายเดือนและรายการนัดของวันที่เลือก
@@ -98,5 +109,5 @@ natna-app/
 - อย่าใส่ `<style>`/`<script>` แบบ inline กลับเข้าไปใน `index.html` อีก — ให้แก้ที่
   `css/style.css` / `js/app.js` แทนเพื่อรักษาโครงสร้างที่แยกไว้
 - ถ้าจะเพิ่มรูปภาพ/ไอคอนใหม่ ให้เก็บไว้ใน `assets/` แทนการฝัง base64 ในโค้ด
-- ยังไม่มี persistence — ถ้าจะเพิ่ม (เช่น localStorage หรือ backend จริง) ควรทำเป็นงานแยก
-  และคุยกับผู้ใช้ก่อนว่าต้องการ data model แบบไหน
+- โทนสี/ฟอนต์อ้างอิงผ่าน CSS custom properties ใน `:root` ของ `css/style.css` เท่านั้น —
+  ถ้าจะปรับโทนสีอีก ให้แก้ที่ตัวแปรใน `:root` แทนการไล่แก้ค่าสีทีละจุดทั่วไฟล์
