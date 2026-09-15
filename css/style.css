@@ -14,49 +14,35 @@
   --brand-gradient:linear-gradient(135deg, var(--lime), var(--green) 55%, var(--teal-dark));
 }
 *{box-sizing:border-box;}
-body{margin:0;font-family:'K2D',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:30px 16px 70px;}
+body{margin:0;font-family:'K2D',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding:22px 16px 70px;}
 .wrap{max-width:520px;margin:0 auto;}
 .hidden{display:none !important;}
 
-header{
-  margin-bottom:26px;display:flex;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
-  background:linear-gradient(135deg, rgba(199,226,58,0.16), rgba(11,92,104,0.10));
-  border:1px solid rgba(11,92,104,0.15);
-  border-radius:22px;padding:22px 20px;
-}
-header::before{
-  content:'';position:absolute;width:170px;height:170px;left:-55px;top:-65px;
-  background:radial-gradient(circle, rgba(199,226,58,0.40), transparent 70%);
-  filter:blur(2px);pointer-events:none;
-}
-header::after{
-  content:'';position:absolute;width:130px;height:130px;right:-45px;bottom:-60px;
-  background:radial-gradient(circle, rgba(11,92,104,0.20), transparent 70%);
-  filter:blur(2px);pointer-events:none;
-}
-.brand-logo{position:relative;z-index:1;}
-.brand-logo img{width:150px;height:auto;object-fit:contain;display:block;}
+/* โลโก้ลอยอยู่บนพื้นหลังปกติของหน้า ไม่มีกรอบการ์ด/ไล่สี/แสงฟุ้งห่อหุ้มแล้ว (ของดีไซน์เก่า) */
+header{margin-bottom:12px;display:flex;align-items:center;justify-content:center;}
+.brand-logo img{width:92px;height:auto;object-fit:contain;display:block;}
 
 /* ===== Mascot section (หน้าแรก เหนือ toolbar) ===== */
-.mascot-section{margin-bottom:20px;}
+.mascot-section{margin-bottom:14px;}
 .mascot-frame{
   position:relative;border-radius:26px;overflow:hidden;
-  box-shadow:0 4px 18px rgba(11,92,104,0.16);
+  /* เงานุ่มๆ รอบกรอบ + fade ขอบภาพเข้ากับพื้นหลังหน้าเว็บเบาๆ กลบลวดลายกล่อง/แถบตกแต่ง
+     ขอบภาพต้นฉบับที่ไม่เกี่ยวกับตัวมาสคอต ให้กรอบดูสะอาดขึ้น */
+  box-shadow:0 4px 18px rgba(11,92,104,0.16), inset 0 0 34px 14px var(--cream);
 }
-.mascot-img{display:block;width:100%;height:auto;max-height:220px;object-fit:cover;}
-.mascot-badge{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;align-items:center;}
-.mascot-badge-count{
-  width:52px;height:52px;border-radius:50%;background:var(--gold);color:#fff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;font-weight:700;border:3px solid var(--white);
+.mascot-img{display:block;width:100%;height:auto;max-height:190px;object-fit:cover;object-position:50% 40%;}
+/* ป้ายตัวเลข + ข้อความ "นัดใกล้ถึง" รวมเป็นแคปซูลเดียวกันอันเดียว มุมขวาบนของกรอบ */
+.mascot-badge{
+  position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:7px;
+  background:var(--gold);border-radius:999px;padding:5px 14px 5px 5px;
   box-shadow:0 3px 10px rgba(0,0,0,0.18);
 }
-.mascot-badge-label{
-  margin-top:4px;font-size:11px;font-weight:600;color:#fff;background:var(--gold);
-  padding:3px 10px;border-radius:999px;white-space:nowrap;
-  box-shadow:0 2px 6px rgba(0,0,0,0.15);
+.mascot-badge-count{
+  width:28px;height:28px;border-radius:50%;background:var(--white);color:var(--gold-hover);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:700;flex:none;
 }
+.mascot-badge-label{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;}
 
 /* ===== Home page ===== */
 .home-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;}
