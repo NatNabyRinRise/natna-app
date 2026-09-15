@@ -18,16 +18,30 @@
   และมีหน้าแยกสำหรับจัดการ (เพิ่ม/ลบ) รายการแนะนำเหล่านี้
 - **ลบนัดหมาย**: มี modal ยืนยันก่อนลบ
 
-ข้อมูลทั้งหมด (นัดหมาย, เช็คลิสต์, รายการแนะนำ) เก็บอยู่ใน **JavaScript state ในหน่วยความจำ
-เท่านั้น** (ไม่มี backend, ไม่มี localStorage/database) — รีโหลดหน้าแล้วข้อมูลจะรีเซ็ตกลับไปเป็น
-ข้อมูลตัวอย่าง (mock data) ที่ hardcode ไว้ในโค้ด
+**นัดหมาย (รวมเช็คลิสต์ของแต่ละนัด)** เก็บอยู่บน **Supabase** (ตาราง `appointments` — ดู
+`supabase/schema.sql`) ผ่าน `@supabase/supabase-js` ที่โหลดจาก CDN — รีโหลดหน้าจะดึงข้อมูล
+ล่าสุดจาก Supabase กลับมาเสมอ (ไม่ใช่ mock data คงที่อีกต่อไป) ถ้าโหลดไม่สำเร็จ (ยังไม่ได้รัน
+schema.sql, เน็ตล่ม ฯลฯ) จะ fallback ไปใช้ข้อมูลตัวอย่าง (mock data) ที่ hardcode ไว้ในโค้ดแทน
+
+**⚠️ ไม่มีระบบ login/auth**: เข้าถึง Supabase ด้วย anon public key เดียวกันทุกคน (ฝังอยู่ใน
+`js/app.js`, ปลอดภัยที่จะ public แต่ RLS policy เปิดให้ anon อ่าน/เขียน/ลบได้ทุกแถว) —
+**ผู้เข้าเว็บทุกคนเห็นและแก้ไข/ลบนัดหมายชุดเดียวกันร่วมกันได้ทั้งหมด** ไม่มีการแบ่งข้อมูลต่อผู้ใช้
+เหมาะกับ demo/ใช้งานภายในครอบครัวเดียว ไม่เหมาะกับข้อมูลที่ต้องเป็นความลับต่อผู้ใช้แต่ละคน
+
+**รายการแนะนำ (`guideItems`)** ยังคง**อยู่ในโค้ดเป็น JavaScript state ในหน่วยความจำเท่านั้น**
+เหมือนเดิม ไม่มีตารางของตัวเอง — แก้ไขในหน้า "จัดการรายการแนะนำ" (เพิ่ม/ลบ) จะอยู่แค่ session
+ปัจจุบัน รีโหลดหน้าแล้วรีเซ็ตกลับไปเป็นรายการที่ hardcode ไว้เสมอ (ตั้งใจให้เป็นแบบนี้ ไม่ใช่บั๊ก)
 
 ## เทคโนโลยีที่ใช้
 
 - **Vanilla HTML/CSS/JavaScript** ล้วน ๆ — ไม่มี build step, ไม่มี framework
   (ไม่ใช้ React/Vue), ไม่มี package.json / npm dependencies
+- **Supabase** เป็น backend สำหรับตาราง `appointments` เท่านั้น — โหลด client library ผ่าน
+  `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@.../dist/umd/supabase.js">`
+  ก่อน `js/app.js` (ยังไม่มี build step อยู่ดี ใช้ CDN + global `window.supabase.createClient()`)
 - ฟอนต์ **Sarabun** จาก Google Fonts (โหลดผ่าน `<link>` ใน `<head>`)
-- ใช้ `crypto.randomUUID()` ของเบราว์เซอร์สำหรับสร้าง id
+- ใช้ `crypto.randomUUID()` ของเบราว์เซอร์สำหรับสร้าง id ของรายการเช็คลิสต์ (id ของนัดหมาย
+  แต่ละนัดมาจาก Postgres `gen_random_uuid()` ตอน insert แทน)
 - CSS ธรรมดา ใช้ CSS custom properties (`:root { --gold: ...; --ink: ...; }`)
   เป็น design tokens สำหรับโทนสี ไม่มี CSS framework (ไม่ใช่ Tailwind/Bootstrap)
 - ไม่มี test suite และไม่มี build/deploy script ใด ๆ ในโปรเจกต์นี้

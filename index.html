@@ -18,8 +18,11 @@
     </div>
   </header>
 
+  <!-- ============ LOADING STATE (ระหว่างโหลดข้อมูลจาก Supabase ตอนเปิดแอป) ============ -->
+  <div id="loadingState" class="empty-state">กำลังโหลดข้อมูล...</div>
+
   <!-- ============ HOME PAGE ============ -->
-  <div id="homePage">
+  <div id="homePage" class="hidden">
     <div class="home-toolbar">
       <div class="view-toggle">
         <button id="btnCardView" class="active" onclick="setHomeView('card')">การ์ด</button>
@@ -175,6 +178,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
