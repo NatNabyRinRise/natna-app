@@ -258,7 +258,8 @@ header{margin-bottom:12px;display:flex;align-items:center;justify-content:center
 .share-modal-title{font-size:19px;font-weight:700;}
 .share-modal-sub{font-size:14px;color:var(--ink-soft);margin:6px 0 16px;line-height:1.5;}
 .share-qr-wrap{display:flex;justify-content:center;margin-bottom:14px;}
-.share-qr-wrap canvas{border-radius:12px;border:1px solid var(--silver-soft);}
+/* qrcodejs วาดเป็น <canvas>/<img> ซ้อนกันในกล่องนี้ (ขึ้นกับเบราว์เซอร์) ครอบด้วยกรอบเดียวกัน */
+.share-qr-wrap > div{border-radius:12px;border:1px solid var(--silver-soft);padding:8px;line-height:0;}
 .share-link-box{
   font-size:13px;color:var(--ink);background:var(--cream);border:1px solid var(--silver-soft);
   border-radius:10px;padding:10px 12px;margin-bottom:14px;word-break:break-all;

@@ -187,9 +187,13 @@ async function openShareModal(){
   const url = `${location.origin}${location.pathname}?share=${cachedShareToken}`;
   document.getElementById('shareLinkText').textContent = url;
   document.getElementById('shareModal').classList.remove('hidden');
-  QRCode.toCanvas(document.getElementById('shareQrCanvas'), url, { width: 200, margin: 1 }, err => {
-    if(err) console.error('สร้าง QR code ไม่สำเร็จ', err);
-  });
+  const qrEl = document.getElementById('shareQrCanvas');
+  qrEl.innerHTML = ''; // เคลียร์ QR code เก่าก่อน เผื่อเปิด modal ซ้ำหลายครั้ง (qrcodejs ไม่เคลียร์ให้เอง)
+  try {
+    new QRCode(qrEl, { text: url, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+  } catch(e) {
+    console.error('สร้าง QR code ไม่สำเร็จ', e);
+  }
 }
 function closeShareModal(){
   document.getElementById('shareModal').classList.add('hidden');

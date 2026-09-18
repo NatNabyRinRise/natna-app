@@ -224,7 +224,7 @@
   <div class="modal-box share-modal-box">
     <div class="share-modal-title">แชร์ให้ผู้สูงอายุ</div>
     <p class="share-modal-sub">ให้ลิงก์หรือให้สแกน QR code นี้ เพื่อดูนัดหมาย/ติ๊กเช็คลิสต์ได้โดยไม่ต้อง login</p>
-    <div class="share-qr-wrap"><canvas id="shareQrCanvas"></canvas></div>
+    <div class="share-qr-wrap"><div id="shareQrCanvas"></div></div>
     <div class="share-link-box" id="shareLinkText"></div>
     <button class="form-submit" onclick="copyShareLink()">คัดลอกลิงก์</button>
     <button class="btn-cancel share-close-btn" onclick="closeShareModal()">ปิด</button>
@@ -232,7 +232,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
