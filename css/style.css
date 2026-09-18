@@ -53,12 +53,14 @@ header{margin-bottom:12px;display:flex;align-items:center;justify-content:center
 .mascot-badge-label{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;}
 
 /* ===== Home page ===== */
-.topbar-row{display:flex;justify-content:flex-end;margin-bottom:4px;}
-.logout-btn{
+.topbar-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;}
+.share-btn, .logout-btn{
   background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;
-  color:var(--ink-soft);padding:5px 10px;border-radius:8px;
-  display:flex;align-items:center;gap:4px;
+  padding:5px 10px;border-radius:8px;display:flex;align-items:center;gap:4px;
 }
+.share-btn{color:var(--gold-hover);font-weight:600;}
+.share-btn:hover, .share-btn:active{background:var(--gold-soft);}
+.logout-btn{color:var(--ink-soft);}
 .logout-btn:hover, .logout-btn:active{color:var(--notready);background:var(--notready-bg);}
 .home-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;}
 .view-toggle{display:flex;background:var(--silver-soft);border-radius:12px;padding:3px;}
@@ -250,3 +252,46 @@ header{margin-bottom:12px;display:flex;align-items:center;justify-content:center
 .upcoming-modal-list{overflow-y:auto;margin-bottom:16px;}
 .upcoming-modal-list .appt-card:last-child{margin-bottom:0;}
 .popup-reason{font-size:12px;font-weight:600;color:var(--gold-hover);margin-top:4px;}
+
+/* ===== Share link modal (ลิงก์ + QR code สำหรับแชร์ให้ผู้สูงอายุ) ===== */
+.share-modal-box{text-align:center;}
+.share-modal-title{font-size:19px;font-weight:700;}
+.share-modal-sub{font-size:14px;color:var(--ink-soft);margin:6px 0 16px;line-height:1.5;}
+.share-qr-wrap{display:flex;justify-content:center;margin-bottom:14px;}
+.share-qr-wrap canvas{border-radius:12px;border:1px solid var(--silver-soft);}
+.share-link-box{
+  font-size:13px;color:var(--ink);background:var(--cream);border:1px solid var(--silver-soft);
+  border-radius:10px;padding:10px 12px;margin-bottom:14px;word-break:break-all;
+}
+.share-close-btn{width:100%;margin-top:8px;}
+
+/* ===== Shared view (เปิดผ่านลิงก์แชร์ ?share=TOKEN — ไม่ต้อง login) =====
+   ดู/ติ๊กเช็คลิสต์ได้อย่างเดียว ไม่มีปุ่มเพิ่ม/แก้ไข/ลบ ตัวหนังสือ/ปุ่มขนาดใหญ่เป็นพิเศษ
+   เพราะกลุ่มเป้าหมายจริงของหน้านี้คือผู้สูงอายุ ไม่ใช่คนดูแล */
+.shared-header{text-align:center;margin-bottom:20px;}
+.shared-title{font-size:28px;font-weight:700;}
+.shared-appt-card{
+  background:var(--white);border:1px solid var(--gold-soft);border-radius:22px;
+  padding:22px 20px;margin-bottom:20px;
+}
+.shared-appt-head{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;}
+.shared-appt-name{font-size:24px;font-weight:700;}
+.shared-appt-place{font-size:18px;color:var(--ink-soft);margin-top:4px;}
+.shared-appt-date{font-size:18px;color:var(--ink-soft);margin-top:2px;}
+.shared-appt-head .badge{font-size:15px;padding:8px 14px;}
+.shared-checklist{list-style:none;margin:0;padding:14px 0 0;border-top:1px solid var(--silver-soft);}
+.shared-check-item{display:flex;align-items:center;gap:16px;padding:14px 4px;font-size:20px;cursor:pointer;}
+.shared-check-box{
+  width:34px;height:34px;border-radius:10px;border:3px solid var(--silver);flex:none;
+  display:flex;align-items:center;justify-content:center;transition:all .15s ease;
+}
+.shared-check-item.done .shared-check-box{background:var(--ready);border-color:var(--ready);}
+.shared-check-box svg{opacity:0;transition:opacity .1s;}
+.shared-check-item.done .shared-check-box svg{opacity:1;}
+.shared-check-item.done .shared-check-label{color:var(--ink-soft);text-decoration:line-through;}
+.shared-empty-note{text-align:center;color:var(--ink-soft);font-size:18px;padding:30px 10px;}
+
+.shared-invalid-box{text-align:center;padding:60px 20px;}
+.shared-invalid-icon{font-size:60px;margin-bottom:16px;}
+.shared-invalid-title{font-size:26px;font-weight:700;margin-bottom:10px;}
+.shared-invalid-sub{font-size:18px;color:var(--ink-soft);line-height:1.6;}

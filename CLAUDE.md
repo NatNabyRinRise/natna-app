@@ -23,6 +23,12 @@
 - **Login/สมัครสมาชิก**: หน้าเดียวสลับโหมด login/signup ด้วยลิงก์ท้ายฟอร์ม (`authMode`,
   `toggleAuthMode()`) ต้อง login ก่อนเสมอถึงจะเห็นแอปหลัก (`#authPage` แสดงก่อนถ้ายังไม่มี
   session) มีปุ่ม "ออกจากระบบ" มุมขวาบนของหน้าแรก (`handleLogout()`)
+- **แชร์ให้ผู้สูงอายุ**: ปุ่ม "🔗 แชร์ให้ผู้สูงอายุ" มุมซ้ายบนของหน้าแรก (`openShareModal()`)
+  แสดงลิงก์ + QR code ที่ผูกกับ share token ของบัญชี เปิดลิงก์นั้น (`?share=TOKEN`) แล้วเข้า
+  หน้าพิเศษที่**ไม่ต้อง login เลย** (`#sharedPage`) ดู/ติ๊กเช็คลิสต์ได้อย่างเดียว (ห้ามเพิ่ม/
+  แก้ไข/ลบนัดหมาย ห้ามแก้ข้อความเช็คลิสต์ — บังคับไว้ระดับฐานข้อมูลผ่าน RPC ไม่ใช่แค่ซ่อนปุ่ม)
+  ตัวหนังสือ/ปุ่มขนาดใหญ่เป็นพิเศษเพราะกลุ่มเป้าหมายจริงคือผู้สูงอายุ — token ผิด/ไม่พบ ขึ้น
+  หน้า "ลิงก์ไม่ถูกต้อง" (`#sharedInvalidPage`) ไม่โชว์ข้อมูลอะไรเลย (ดู `supabase/share-migration.sql`)
 
 **นัดหมาย (รวมเช็คลิสต์ของแต่ละนัด)** เก็บอยู่บน **Supabase** (ตาราง `appointments` — ดู
 `supabase/schema.sql`) ผ่าน `@supabase/supabase-js` ที่โหลดจาก CDN — รีโหลดหน้าจะดึงข้อมูล
@@ -44,9 +50,11 @@ schema.sql, เน็ตล่ม ฯลฯ) จะ fallback ไปใช้ข�
 
 - **Vanilla HTML/CSS/JavaScript** ล้วน ๆ — ไม่มี build step, ไม่มี framework
   (ไม่ใช้ React/Vue), ไม่มี package.json / npm dependencies
-- **Supabase** เป็น backend สำหรับตาราง `appointments` เท่านั้น — โหลด client library ผ่าน
+- **Supabase** เป็น backend สำหรับตาราง `appointments`/`profiles` — โหลด client library ผ่าน
   `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@.../dist/umd/supabase.js">`
   ก่อน `js/app.js` (ยังไม่มี build step อยู่ดี ใช้ CDN + global `window.supabase.createClient()`)
+- **qrcode** (npm package) จาก CDN สำหรับสร้าง QR code ของลิงก์แชร์ — โหลดเป็น global
+  `window.QRCode` (`QRCode.toCanvas(...)`) ก่อน `js/app.js` เช่นกัน
 - ฟอนต์ **K2D** จาก Google Fonts (โหลดผ่าน `<link>` ใน `<head>`) ใช้ทั้งหัวข้อและเนื้อความ
 - ใช้ `crypto.randomUUID()` ของเบราว์เซอร์สำหรับสร้าง id ของรายการเช็คลิสต์ (id ของนัดหมาย
   แต่ละนัดมาจาก Postgres `gen_random_uuid()` ตอน insert แทน)
@@ -74,6 +82,9 @@ python3 -m http.server 8000
 2. `auth-migration.sql` — เพิ่ม `user_id` + เปลี่ยน RLS ให้กรองตามบัญชีที่ login (รันได้ทันที)
 3. สมัครบัญชีแรกในแอป แล้วค่อยรัน `auth-backfill.sql` — มอบข้อมูลตัวอย่าง 4 รายการเดิมให้
    เป็นของบัญชีนั้น (ข้ามขั้นนี้ได้ถ้าไม่ต้องการข้อมูลตัวอย่าง)
+4. `share-migration.sql` — เพิ่มตาราง `profiles` (เก็บ share token) + ฟังก์ชัน RPC
+   `get_shared_view`/`toggle_shared_checklist_item` สำหรับฟีเจอร์ "แชร์ให้ผู้สูงอายุ"
+   (รันได้ทันที ไม่ต้องรอสมัครบัญชี — token ของแต่ละบัญชีจะถูกสร้างอัตโนมัติตอน login เอง)
 
 ## โครงสร้างไฟล์
 
@@ -92,7 +103,8 @@ natna-app/
 └── supabase/            # ไฟล์ SQL ที่ต้องรันเองใน Supabase Dashboard → SQL Editor (เรียงลำดับ)
     ├── schema.sql          # สร้างตาราง appointments + seed ข้อมูลตัวอย่าง
     ├── auth-migration.sql  # เพิ่ม user_id + เปลี่ยน RLS ให้กรองตามบัญชีที่ login
-    └── auth-backfill.sql   # มอบข้อมูลตัวอย่างเดิมให้บัญชีแรกที่สมัคร (รันหลังสมัครแล้ว)
+    ├── auth-backfill.sql   # มอบข้อมูลตัวอย่างเดิมให้บัญชีแรกที่สมัคร (รันหลังสมัครแล้ว)
+    └── share-migration.sql # ตาราง profiles (share token) + RPC สำหรับฟีเจอร์แชร์ให้ผู้สูงอายุ
 ```
 
 เดิมโค้ดทั้งหมด (HTML + CSS + JS + โลโก้แบบ base64) อยู่รวมกันในไฟล์ `index.html`
@@ -108,6 +120,11 @@ natna-app/
 - **Auth** — login/สมัครสมาชิก/ออกจากระบบ ด้วย Supabase Auth (`handleAuthSubmit`,
   `toggleAuthMode`, `handleLogout`, `currentUser`) และจุดเข้าแอปหลังผ่าน auth
   (`onAuthSuccess`, `loadAppointmentsAndShowHome`)
+- **Share link** — สร้าง/ดึง share token ของบัญชี (`ensureShareToken`), แสดง modal ลิงก์+QR
+  (`openShareModal`, `cachedShareToken`)
+- **Shared view** — หน้าดู/ติ๊กเช็คลิสต์ผ่านลิงก์แชร์โดยไม่ต้อง login (`initSharedView`,
+  `renderSharedList`, `toggleSharedItem`, `showSharedInvalid` — เรียกจาก `initApp()` เมื่อ
+  URL มี `?share=TOKEN`)
 - **NAV** — สลับการแสดงผลระหว่างหน้า (`showHome`, `showAddForm`, `showDetail`, `showManage`,
   `showAuthPage`)
 - **Status helper** — คำนวณสถานะนัดหมาย (`apptStatus`) และจัดรูปแบบวันที่ไทย (`fmtDateTh`)
@@ -122,8 +139,9 @@ natna-app/
 - **Manage guide list** — เพิ่ม/ลบรายการแนะนำ (`renderGuideManageList`, `addGuideItem`)
 
 หน้าเว็บทั้งหมดในแอปเป็น `<div>` ที่ซ่อน/แสดงด้วยคลาส `hidden` (single-page app แบบง่าย
-ไม่มี router/URL routing) — element id หลักที่แต่ละหน้าใช้คือ `authPage`, `homePage`,
-`addPage`, `detailPage`, `managePage`
+ไม่มี router/URL routing จริงๆ — ยกเว้น query string `?share=TOKEN` ที่ใช้แค่ตรวจจับโหมด
+แชร์ตอนเปิดแอป ไม่ได้ผูกกับ history/navigation ใดๆ) — element id หลักที่แต่ละหน้าใช้คือ
+`authPage`, `homePage`, `addPage`, `detailPage`, `managePage`, `sharedPage`, `sharedInvalidPage`
 
 ## หมายเหตุสำหรับการแก้ไขโค้ดครั้งต่อไป
 
