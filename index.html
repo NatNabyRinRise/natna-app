@@ -17,8 +17,27 @@
   <!-- ============ LOADING STATE (ระหว่างโหลดข้อมูลจาก Supabase ตอนเปิดแอป) ============ -->
   <div id="loadingState" class="empty-state">กำลังโหลดข้อมูล...</div>
 
+  <!-- ============ LOGIN / SIGNUP PAGE (แสดงก่อนเข้าแอปหลักเสมอ ถ้ายังไม่ได้ login) ============ -->
+  <div id="authPage" class="hidden">
+    <div class="card">
+      <div class="manage-title" id="authTitle">เข้าสู่ระบบ</div>
+      <p class="manage-sub" id="authSub">เข้าสู่ระบบเพื่อจัดการนัดหมายของคุณ</p>
+      <div class="form-field"><label>อีเมล</label><input type="email" id="authEmail" placeholder="you@email.com"></div>
+      <div class="form-field"><label>รหัสผ่าน</label><input type="password" id="authPassword" placeholder="อย่างน้อย 6 ตัวอักษร"></div>
+      <p class="auth-message hidden" id="authMessage"></p>
+      <button class="form-submit" id="authSubmitBtn" onclick="handleAuthSubmit()">เข้าสู่ระบบ</button>
+      <p class="auth-toggle-row">
+        <span id="authToggleText">ยังไม่มีบัญชี?</span>
+        <button class="auth-toggle-link" onclick="toggleAuthMode()" id="authToggleBtn">สมัครที่นี่</button>
+      </p>
+    </div>
+  </div>
+
   <!-- ============ HOME PAGE ============ -->
   <div id="homePage" class="hidden">
+    <div class="topbar-row">
+      <button class="logout-btn" onclick="handleLogout()">ออกจากระบบ</button>
+    </div>
     <!-- มาสคอต: แสดงจำนวนนัดหมายที่เหลือน้อยกว่า 5 วัน อัปเดตทุกครั้งที่ showHome() ทำงาน -->
     <div class="mascot-section">
       <div class="mascot-frame">

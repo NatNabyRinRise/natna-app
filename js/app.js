@@ -59,6 +59,101 @@ function persistChecklist(appt){
   });
 }
 
+// ================= Auth (Supabase Auth: อีเมล + รหัสผ่าน) =================
+// ต้อง login ก่อนถึงจะเข้าแอปหลักได้ — ดู initApp() ท้ายไฟล์ที่เช็ค session ตอนเปิดแอป
+// นัดหมายแต่ละแถวผูกกับ user_id ของบัญชีที่สร้าง (RLS กรองให้เห็นเฉพาะของตัวเอง — ดู
+// supabase/auth-migration.sql) ฝั่ง JS จึงไม่ต้องส่ง user_id เองตอน insert เลย (DB ใส่ให้
+// อัตโนมัติจาก auth.uid() ของผู้ใช้ที่ login อยู่)
+let currentUser = null; // Supabase auth user object ของบัญชีที่ login อยู่ — null ถ้ายังไม่ login
+let authMode = 'login'; // 'login' | 'signup' — สลับด้วยลิงก์ท้ายฟอร์ม
+
+function toggleAuthMode(){
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  renderAuthMode();
+  setAuthMessage('');
+}
+function renderAuthMode(){
+  const isLogin = authMode === 'login';
+  document.getElementById('authTitle').textContent = isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก';
+  document.getElementById('authSub').textContent = isLogin
+    ? 'เข้าสู่ระบบเพื่อจัดการนัดหมายของคุณ'
+    : 'สมัครสมาชิกใหม่เพื่อเริ่มใช้งาน NatNa';
+  document.getElementById('authSubmitBtn').textContent = isLogin ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก';
+  document.getElementById('authToggleText').textContent = isLogin ? 'ยังไม่มีบัญชี?' : 'มีบัญชีอยู่แล้ว?';
+  document.getElementById('authToggleBtn').textContent = isLogin ? 'สมัครที่นี่' : 'เข้าสู่ระบบที่นี่';
+}
+function setAuthMessage(text, kind){ // kind: 'error' | 'success' (เว้นว่าง = ซ่อนข้อความ)
+  const el = document.getElementById('authMessage');
+  el.textContent = text;
+  el.className = 'auth-message' + (kind ? ` auth-message-${kind}` : '');
+  el.classList.toggle('hidden', !text);
+}
+function showAuthPage(){
+  hideAllPages();
+  document.getElementById('authPage').classList.remove('hidden');
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  authMode = 'login';
+  renderAuthMode();
+  setAuthMessage('');
+}
+
+async function handleAuthSubmit(){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if(!email || !password){
+    setAuthMessage('กรุณากรอกอีเมลและรหัสผ่านให้ครบ', 'error');
+    return;
+  }
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true;
+  try {
+    if(authMode === 'login'){
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      await onAuthSuccess(data.session);
+    } else {
+      const { data, error } = await db.auth.signUp({ email, password });
+      if(error) throw error;
+      if(data.session){
+        // โปรเจกต์นี้ปิดการยืนยันอีเมล (หรือยืนยันแล้วทันที) -> ได้ session พร้อมใช้งานเลย
+        await onAuthSuccess(data.session);
+      } else {
+        // ยังไม่มี session -> โปรเจกต์เปิดให้ต้องกดยืนยันลิงก์ในอีเมลก่อนถึงจะ login ได้
+        authMode = 'login';
+        renderAuthMode();
+        setAuthMessage('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ', 'success');
+      }
+    }
+  } catch(e) {
+    console.error('Auth error', e);
+    setAuthMessage(e.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById('authEmail').addEventListener('keypress', e => { if(e.key==='Enter') handleAuthSubmit(); });
+document.getElementById('authPassword').addEventListener('keypress', e => { if(e.key==='Enter') handleAuthSubmit(); });
+
+async function onAuthSuccess(session){
+  currentUser = session.user;
+  document.getElementById('authPage').classList.add('hidden');
+  document.getElementById('loadingState').classList.remove('hidden');
+  await loadAppointmentsAndShowHome();
+  document.getElementById('loadingState').classList.add('hidden');
+}
+
+function handleLogout(){
+  db.auth.signOut().then(() => {
+    currentUser = null;
+    appointments = [];
+    showAuthPage();
+  }).catch(e => {
+    console.error('ออกจากระบบไม่สำเร็จ', e);
+    alert('ออกจากระบบไม่สำเร็จ กรุณาลองใหม่');
+  });
+}
+
 let currentApptId = null;
 let deleteTargetId = null;
 let calMonth = today.getMonth();
@@ -96,7 +191,7 @@ function statusIconKey(diffDays){
 
 // ================= NAV between top-level pages =================
 function hideAllPages(){
-  ['homePage','addPage','previewPage','detailPage','managePage'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['authPage','homePage','addPage','previewPage','detailPage','managePage'].forEach(id => document.getElementById(id).classList.add('hidden'));
 }
 function showHome(){
   hideAllPages();
@@ -728,13 +823,14 @@ document.getElementById('newGuideItem').addEventListener('keypress', e => { if(e
 // ที่ใช้นิ้วแตะและต้องเห็น feedback ทางสีชัดเจนว่ากดโดนแล้ว
 document.addEventListener('touchstart', function(){}, { passive:true });
 
-// โหลดนัดหมายจาก Supabase ก่อนแสดงหน้าแรก (แสดง #loadingState ระหว่างรอ) — ถ้าโหลดไม่สำเร็จ
-// (ยังไม่ได้รัน supabase/schema.sql, เน็ตล่ม ฯลฯ) ใช้ข้อมูลตัวอย่างเริ่มต้นที่ตั้งไว้ด้านบนแทนไปก่อน
+// โหลดนัดหมายจาก Supabase (ของบัญชีที่ login อยู่ — RLS กรองให้อัตโนมัติ) แล้วแสดงหน้าแรก
+// ถ้าโหลดไม่สำเร็จ (เน็ตล่ม ฯลฯ) ใช้ข้อมูลตัวอย่างเริ่มต้นที่ตั้งไว้ด้านบนแทนไปก่อน เรียกทั้งจาก
+// initApp() ตอนเปิดแอปแล้วมี session อยู่แล้ว และจาก onAuthSuccess() หลัง login/สมัครสำเร็จ
 //
 // สำคัญ: ต้อง await ให้ appointments โหลดมาครบก่อน แล้วค่อยเรียก checkUpcomingPopup() —
 // ห้ามเรียกก่อนหน้านั้นเด็ดขาด (เช่น ตอน appointments ยังเป็นค่าเริ่มต้นตอนประกาศตัวแปร)
 // ไม่งั้นป๊อปอัปจะคำนวณจากข้อมูลที่ยังโหลดไม่ครบ/ยังไม่ใช่ของจริงจาก Supabase
-async function initApp(){
+async function loadAppointmentsAndShowHome(){
   let loadFailed = false;
   try {
     appointments = await fetchAppointmentsFromDb();
@@ -742,9 +838,6 @@ async function initApp(){
     loadFailed = true;
     console.error('โหลดข้อมูลจาก Supabase ไม่สำเร็จ ใช้ข้อมูลตัวอย่างเริ่มต้นแทนชั่วคราว', e);
   }
-  document.getElementById('loadingState').classList.add('hidden');
-  populateTimeSelects();
-  renderNotifyChips();
   showHome();
   if(loadFailed){
     // โหลดข้อมูลจริงไม่สำเร็จ -> appointments ตอนนี้คือข้อมูลตัวอย่าง (mock) ที่ hardcode ไว้
@@ -755,5 +848,20 @@ async function initApp(){
   } else {
     checkUpcomingPopup();
   }
+}
+
+// จุดเริ่มแอป: เช็คก่อนว่ามี session ค้างอยู่ไหม (login ไว้จากรอบก่อนแล้วยังไม่ signOut) —
+// มี -> เข้าแอปหลักตามปกติ, ไม่มี -> แสดงหน้า login/สมัครสมาชิกก่อนเสมอ
+async function initApp(){
+  populateTimeSelects();
+  renderNotifyChips();
+  const { data: { session } } = await db.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    await loadAppointmentsAndShowHome();
+  } else {
+    showAuthPage();
+  }
+  document.getElementById('loadingState').classList.add('hidden');
 }
 initApp();
