@@ -53,8 +53,9 @@ schema.sql, เน็ตล่ม ฯลฯ) จะ fallback ไปใช้ข�
 - **Supabase** เป็น backend สำหรับตาราง `appointments`/`profiles` — โหลด client library ผ่าน
   `<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@.../dist/umd/supabase.js">`
   ก่อน `js/app.js` (ยังไม่มี build step อยู่ดี ใช้ CDN + global `window.supabase.createClient()`)
-- **qrcode** (npm package) จาก CDN สำหรับสร้าง QR code ของลิงก์แชร์ — โหลดเป็น global
-  `window.QRCode` (`QRCode.toCanvas(...)`) ก่อน `js/app.js` เช่นกัน
+- **qrcodejs** (davidshimjs) จาก cdnjs สำหรับสร้าง QR code ของลิงก์แชร์ — โหลดเป็น global
+  `window.QRCode` (`new QRCode(containerEl, {text, width, height, correctLevel})` วาดผลลัพธ์
+  ลงใน container element ที่ส่งไปให้เอง) ก่อน `js/app.js` เช่นกัน
 - ฟอนต์ **K2D** จาก Google Fonts (โหลดผ่าน `<link>` ใน `<head>`) ใช้ทั้งหัวข้อและเนื้อความ
 - ใช้ `crypto.randomUUID()` ของเบราว์เซอร์สำหรับสร้าง id ของรายการเช็คลิสต์ (id ของนัดหมาย
   แต่ละนัดมาจาก Postgres `gen_random_uuid()` ตอน insert แทน)
