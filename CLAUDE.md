@@ -20,16 +20,21 @@
 - **มาสคอต (หน้าแรก)**: การ์ตูนแมวใต้ header พร้อมป้ายวงกลมสีทองแสดงจำนวนนัดหมายที่เหลือ
   น้อยกว่า 5 วัน คำนวณสดจาก `appointments` ทุกครั้งที่กลับมาหน้าแรก (`renderMascotBadge()`
   เรียกจาก `showHome()`)
+- **Login/สมัครสมาชิก**: หน้าเดียวสลับโหมด login/signup ด้วยลิงก์ท้ายฟอร์ม (`authMode`,
+  `toggleAuthMode()`) ต้อง login ก่อนเสมอถึงจะเห็นแอปหลัก (`#authPage` แสดงก่อนถ้ายังไม่มี
+  session) มีปุ่ม "ออกจากระบบ" มุมขวาบนของหน้าแรก (`handleLogout()`)
 
 **นัดหมาย (รวมเช็คลิสต์ของแต่ละนัด)** เก็บอยู่บน **Supabase** (ตาราง `appointments` — ดู
 `supabase/schema.sql`) ผ่าน `@supabase/supabase-js` ที่โหลดจาก CDN — รีโหลดหน้าจะดึงข้อมูล
 ล่าสุดจาก Supabase กลับมาเสมอ (ไม่ใช่ mock data คงที่อีกต่อไป) ถ้าโหลดไม่สำเร็จ (ยังไม่ได้รัน
 schema.sql, เน็ตล่ม ฯลฯ) จะ fallback ไปใช้ข้อมูลตัวอย่าง (mock data) ที่ hardcode ไว้ในโค้ดแทน
 
-**⚠️ ไม่มีระบบ login/auth**: เข้าถึง Supabase ด้วย anon public key เดียวกันทุกคน (ฝังอยู่ใน
-`js/app.js`, ปลอดภัยที่จะ public แต่ RLS policy เปิดให้ anon อ่าน/เขียน/ลบได้ทุกแถว) —
-**ผู้เข้าเว็บทุกคนเห็นและแก้ไข/ลบนัดหมายชุดเดียวกันร่วมกันได้ทั้งหมด** ไม่มีการแบ่งข้อมูลต่อผู้ใช้
-เหมาะกับ demo/ใช้งานภายในครอบครัวเดียว ไม่เหมาะกับข้อมูลที่ต้องเป็นความลับต่อผู้ใช้แต่ละคน
+**🔐 มีระบบ login แล้ว (Supabase Auth: อีเมล + รหัสผ่าน)**: ต้อง login ก่อนถึงจะเข้าแอปหลัก
+และเห็นข้อมูลนัดหมายได้ (`#authPage` — ดูฟังก์ชันหมวด "Auth" ใน `js/app.js`) นัดหมายแต่ละแถว
+ผูกกับ `user_id` ของบัญชีที่สร้าง (คอลัมน์ default เป็น `auth.uid()` ให้อัตโนมัติตอน insert
+ไม่ต้องส่งจาก JS) และ **RLS กรองให้แต่ละบัญชีเห็น/แก้ไข/ลบได้เฉพาะนัดหมายของตัวเองเท่านั้น**
+ไม่เห็นของบัญชีอื่น (ดู `supabase/auth-migration.sql`) — ต่างจากเดิมที่ใช้ anon key เดียว
+เปิดให้ทุกคนเห็นร่วมกันหมด ตอนนี้แต่ละบัญชี "คนดูแล" (caregiver) มีข้อมูลของตัวเองแยกกันแล้ว
 
 **รายการแนะนำ (`guideItems`)** ยังคง**อยู่ในโค้ดเป็น JavaScript state ในหน่วยความจำเท่านั้น**
 เหมือนเดิม ไม่มีตารางของตัวเอง — แก้ไขในหน้า "จัดการรายการแนะนำ" (เพิ่ม/ลบ) จะอยู่แค่ session
@@ -62,6 +67,14 @@ python3 -m http.server 8000
 # แล้วเปิด http://localhost:8000/index.html
 ```
 
+### ตั้งค่า Supabase ครั้งแรก (ต้องรันตามลำดับ)
+
+รันไฟล์ SQL ใน `supabase/` ทีละไฟล์ผ่าน Supabase Dashboard → SQL Editor:
+1. `schema.sql` — สร้างตาราง `appointments` + seed ข้อมูลตัวอย่าง 4 รายการ
+2. `auth-migration.sql` — เพิ่ม `user_id` + เปลี่ยน RLS ให้กรองตามบัญชีที่ login (รันได้ทันที)
+3. สมัครบัญชีแรกในแอป แล้วค่อยรัน `auth-backfill.sql` — มอบข้อมูลตัวอย่าง 4 รายการเดิมให้
+   เป็นของบัญชีนั้น (ข้ามขั้นนี้ได้ถ้าไม่ต้องการข้อมูลตัวอย่าง)
+
 ## โครงสร้างไฟล์
 
 ```
@@ -71,11 +84,15 @@ natna-app/
 │   └── style.css      # สไตล์ทั้งหมดของแอป (design tokens, layout, ทุกหน้า/คอมโพเนนต์)
 ├── js/
 │   └── app.js          # ตรรกะแอปทั้งหมด: state, การ render, event handlers
-└── assets/
-    ├── logo.png          # โลโก้เก่า (ไม่ได้ใช้แสดงผลในแอปแล้ว เหลือไว้เผื่ออ้างอิง)
-    ├── logo-new.png      # โลโก้ปัจจุบันที่ใช้ใน header (มีคำว่า "NatNa นัดนะ" อยู่ในภาพแล้ว
-    │                       จึงไม่มีข้อความ/คำโปรยแยกอยู่ข้างๆ อีกต่อไป)
-    └── mascot-cat.png    # ภาพมาสคอตแมว แสดงในกรอบใต้ header ของหน้าแรก
+├── assets/
+│   ├── logo.png          # โลโก้เก่า (ไม่ได้ใช้แสดงผลในแอปแล้ว เหลือไว้เผื่ออ้างอิง)
+│   ├── logo-new.png      # โลโก้ปัจจุบันที่ใช้ใน header (มีคำว่า "NatNa นัดนะ" อยู่ในภาพแล้ว
+│   │                       จึงไม่มีข้อความ/คำโปรยแยกอยู่ข้างๆ อีกต่อไป)
+│   └── mascot-cat.png    # ภาพมาสคอตแมว แสดงในกรอบใต้ header ของหน้าแรก
+└── supabase/            # ไฟล์ SQL ที่ต้องรันเองใน Supabase Dashboard → SQL Editor (เรียงลำดับ)
+    ├── schema.sql          # สร้างตาราง appointments + seed ข้อมูลตัวอย่าง
+    ├── auth-migration.sql  # เพิ่ม user_id + เปลี่ยน RLS ให้กรองตามบัญชีที่ login
+    └── auth-backfill.sql   # มอบข้อมูลตัวอย่างเดิมให้บัญชีแรกที่สมัคร (รันหลังสมัครแล้ว)
 ```
 
 เดิมโค้ดทั้งหมด (HTML + CSS + JS + โลโก้แบบ base64) อยู่รวมกันในไฟล์ `index.html`
@@ -88,7 +105,11 @@ natna-app/
 
 - **STATE** — ตัวแปร global: `guideItems`, `appointments` (mock data), `currentApptId`,
   `deleteTargetId`, ตัวแปรสถานะปฏิทิน (`calMonth`, `calYear`, `selectedCalDate`)
-- **NAV** — สลับการแสดงผลระหว่างหน้า (`showHome`, `showAddForm`, `showDetail`, `showManage`)
+- **Auth** — login/สมัครสมาชิก/ออกจากระบบ ด้วย Supabase Auth (`handleAuthSubmit`,
+  `toggleAuthMode`, `handleLogout`, `currentUser`) และจุดเข้าแอปหลังผ่าน auth
+  (`onAuthSuccess`, `loadAppointmentsAndShowHome`)
+- **NAV** — สลับการแสดงผลระหว่างหน้า (`showHome`, `showAddForm`, `showDetail`, `showManage`,
+  `showAuthPage`)
 - **Status helper** — คำนวณสถานะนัดหมาย (`apptStatus`) และจัดรูปแบบวันที่ไทย (`fmtDateTh`)
 - **Card view** — render รายการนัดหมายเป็นการ์ด (`renderCardView`), ป้ายมาสคอต
   (`renderMascotBadge` — นับนัดหมายที่เหลือ <5 วัน เรียกจาก `showHome()`)
@@ -101,8 +122,8 @@ natna-app/
 - **Manage guide list** — เพิ่ม/ลบรายการแนะนำ (`renderGuideManageList`, `addGuideItem`)
 
 หน้าเว็บทั้งหมดในแอปเป็น `<div>` ที่ซ่อน/แสดงด้วยคลาส `hidden` (single-page app แบบง่าย
-ไม่มี router/URL routing) — element id หลักที่แต่ละหน้าใช้คือ `homePage`, `addPage`,
-`detailPage`, `managePage`
+ไม่มี router/URL routing) — element id หลักที่แต่ละหน้าใช้คือ `authPage`, `homePage`,
+`addPage`, `detailPage`, `managePage`
 
 ## หมายเหตุสำหรับการแก้ไขโค้ดครั้งต่อไป
 

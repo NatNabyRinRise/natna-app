@@ -22,6 +22,14 @@ body{margin:0;font-family:'K2D',sans-serif;background:var(--cream);color:var(--i
 header{margin-bottom:12px;display:flex;align-items:center;justify-content:center;}
 .brand-logo img{width:92px;height:auto;object-fit:contain;display:block;}
 
+/* ===== Login / Signup page ===== */
+.auth-message{font-size:13px;text-align:center;margin:2px 0 12px;padding:9px 10px;border-radius:10px;}
+.auth-message-error{background:var(--notready-bg);color:var(--notready);}
+.auth-message-success{background:var(--ready-bg);color:var(--ready);}
+.auth-toggle-row{text-align:center;font-size:14px;color:var(--ink-soft);margin:16px 0 0;}
+.auth-toggle-link{background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--gold);padding:2px 4px;}
+.auth-toggle-link:hover, .auth-toggle-link:active{color:var(--gold-hover);text-decoration:underline;}
+
 /* ===== Mascot section (หน้าแรก เหนือ toolbar) ===== */
 .mascot-section{margin-bottom:14px;}
 .mascot-frame{
@@ -45,6 +53,13 @@ header{margin-bottom:12px;display:flex;align-items:center;justify-content:center
 .mascot-badge-label{font-size:12px;font-weight:600;color:#fff;white-space:nowrap;}
 
 /* ===== Home page ===== */
+.topbar-row{display:flex;justify-content:flex-end;margin-bottom:4px;}
+.logout-btn{
+  background:none;border:none;cursor:pointer;font-family:inherit;font-size:13px;
+  color:var(--ink-soft);padding:5px 10px;border-radius:8px;
+  display:flex;align-items:center;gap:4px;
+}
+.logout-btn:hover, .logout-btn:active{color:var(--notready);background:var(--notready-bg);}
 .home-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;}
 .view-toggle{display:flex;background:var(--silver-soft);border-radius:12px;padding:3px;}
 .view-toggle button{
