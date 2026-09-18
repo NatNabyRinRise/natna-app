@@ -852,14 +852,24 @@ async function loadAppointmentsAndShowHome(){
 
 // จุดเริ่มแอป: เช็คก่อนว่ามี session ค้างอยู่ไหม (login ไว้จากรอบก่อนแล้วยังไม่ signOut) —
 // มี -> เข้าแอปหลักตามปกติ, ไม่มี -> แสดงหน้า login/สมัครสมาชิกก่อนเสมอ
+//
+// ใช้ getUser() แทน getSession() โดยเจตนา: getSession() อ่านจาก localStorage เฉยๆ ไม่ได้
+// ยืนยันกับ Supabase ว่า token ยังใช้ได้จริง ถ้า token ค้างอยู่แต่ใช้ไม่ได้แล้ว (เช่น โดน
+// signOut จากที่อื่น, JWT secret/anon key ถูกรีเซ็ตในโปรเจกต์ Supabase) getSession() จะยัง
+// คืนค่า session เดิมมาเหมือนใช้ได้ปกติ ทำให้แอปข้ามหน้า login ไปเลย ทั้งที่จริงแล้ว
+// เรียก fetchAppointmentsFromDb() ต่อจะเจอ 401 แล้ว fallback ไปข้อมูลตัวอย่างแทนแบบงงๆ
+// (ดูเหมือนไม่มีหน้า login แต่ก็ไม่เห็นข้อมูลจริง) — getUser() ยืนยันกับเซิร์ฟเวอร์จริง ถ้า
+// token ใช้ไม่ได้จะ error ออกมาให้รู้ทันที เลยพากลับไปหน้า login ให้ถูกต้อง พร้อม signOut()
+// เคลียร์ session ค้างที่ใช้ไม่ได้ทิ้งไปด้วย กันไม่ให้วนเจอปัญหาเดิมซ้ำทุกครั้งที่เปิดแอป
 async function initApp(){
   populateTimeSelects();
   renderNotifyChips();
-  const { data: { session } } = await db.auth.getSession();
-  if(session){
-    currentUser = session.user;
+  const { data: { user }, error } = await db.auth.getUser();
+  if(user && !error){
+    currentUser = user;
     await loadAppointmentsAndShowHome();
   } else {
+    if(error) await db.auth.signOut().catch(() => {});
     showAuthPage();
   }
   document.getElementById('loadingState').classList.add('hidden');
