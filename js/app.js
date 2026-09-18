@@ -66,6 +66,7 @@ function persistChecklist(appt){
 // อัตโนมัติจาก auth.uid() ของผู้ใช้ที่ login อยู่)
 let currentUser = null; // Supabase auth user object ของบัญชีที่ login อยู่ — null ถ้ายังไม่ login
 let authMode = 'login'; // 'login' | 'signup' — สลับด้วยลิงก์ท้ายฟอร์ม
+let cachedShareToken = null; // share token ของบัญชีที่ login อยู่ (ดู ensureShareToken()) — เคลียร์ตอน logout
 
 function toggleAuthMode(){
   authMode = authMode === 'login' ? 'signup' : 'login';
@@ -147,10 +148,153 @@ function handleLogout(){
   db.auth.signOut().then(() => {
     currentUser = null;
     appointments = [];
+    cachedShareToken = null;
     showAuthPage();
   }).catch(e => {
     console.error('ออกจากระบบไม่สำเร็จ', e);
     alert('ออกจากระบบไม่สำเร็จ กรุณาลองใหม่');
+  });
+}
+
+// ================= Share link (แชร์ให้ผู้สูงอายุดูนัดหมาย/ติ๊กเช็คลิสต์ได้โดยไม่ต้อง login) ===
+// แต่ละบัญชีมี share_token 1 อันเก็บไว้ในตาราง profiles (ดู supabase/share-migration.sql) —
+// สุ่มสร้างอัตโนมัติด้วย gen_random_uuid() ตอนแถวถูกสร้างในฐานข้อมูล ฟังก์ชันนี้แค่เช็คว่ามี
+// แถวโปรไฟล์ของผู้ใช้คนนี้อยู่แล้วหรือยัง ถ้ายังไม่มีก็สร้างให้ (เรียกจาก loadAppointmentsAndShowHome()
+// ทุกครั้งที่ login/เปิดแอปสำเร็จ ตามที่ขอว่า "สุ่มสร้างอัตโนมัติตอนสมัครหรือ login ครั้งแรก")
+async function ensureShareToken(){
+  try {
+    const { data, error } = await db.from('profiles').select('share_token').eq('id', currentUser.id).maybeSingle();
+    if(error) throw error;
+    if(data && data.share_token) return data.share_token;
+    // ยังไม่มีแถวโปรไฟล์ -> สร้างใหม่ (share_token ได้ default จาก DB อัตโนมัติ ไม่ต้องส่งเอง)
+    const { data: inserted, error: insErr } = await db.from('profiles').insert({ id: currentUser.id }).select('share_token').single();
+    if(insErr) throw insErr;
+    return inserted.share_token;
+  } catch(e) {
+    console.error('สร้าง/ดึง share token ไม่สำเร็จ', e);
+    return null;
+  }
+}
+
+async function openShareModal(){
+  if(!cachedShareToken){
+    cachedShareToken = await ensureShareToken();
+    if(!cachedShareToken){
+      alert('สร้างลิงก์แชร์ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+      return;
+    }
+  }
+  const url = `${location.origin}${location.pathname}?share=${cachedShareToken}`;
+  document.getElementById('shareLinkText').textContent = url;
+  document.getElementById('shareModal').classList.remove('hidden');
+  QRCode.toCanvas(document.getElementById('shareQrCanvas'), url, { width: 200, margin: 1 }, err => {
+    if(err) console.error('สร้าง QR code ไม่สำเร็จ', err);
+  });
+}
+function closeShareModal(){
+  document.getElementById('shareModal').classList.add('hidden');
+}
+function copyShareLink(){
+  const text = document.getElementById('shareLinkText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('คัดลอกลิงก์แล้ว');
+  }).catch(() => {
+    alert('คัดลอกอัตโนมัติไม่สำเร็จ กรุณาคัดลอกด้วยตัวเองจากข้อความที่แสดงอยู่');
+  });
+}
+
+// ================= Shared view (เปิดผ่านลิงก์แชร์ ?share=TOKEN — ไม่ต้อง login เลย) =========
+// ดู/ติ๊กเช็คลิสต์ได้อย่างเดียว ไม่มีปุ่มเพิ่ม/แก้ไข/ลบใดๆ — ข้อมูลดึงผ่าน RPC ฟังก์ชันเฉพาะ
+// (get_shared_view / toggle_shared_checklist_item ใน supabase/share-migration.sql) ที่บังคับ
+// สิทธิ์ไว้ในระดับฐานข้อมูลแล้ว ไม่ได้พึ่งแค่การซ่อนปุ่มในหน้าเว็บอย่างเดียว
+let sharedToken = null;
+let sharedAppointments = [];
+
+async function initSharedView(token){
+  hideAllPages();
+  try {
+    const { data, error } = await db.rpc('get_shared_view', { p_token: token });
+    if(error) throw error;
+    if(!data || !data.valid){ showSharedInvalid(); return; }
+    sharedToken = token;
+    sharedAppointments = data.appointments || [];
+    renderSharedList();
+    document.getElementById('sharedPage').classList.remove('hidden');
+  } catch(e) {
+    console.error('โหลดข้อมูลลิงก์แชร์ไม่สำเร็จ', e);
+    showSharedInvalid();
+  }
+}
+function showSharedInvalid(){
+  hideAllPages();
+  document.getElementById('sharedInvalidPage').classList.remove('hidden');
+}
+
+function renderSharedList(){
+  const el = document.getElementById('sharedList');
+  el.innerHTML = '';
+  if(sharedAppointments.length === 0){
+    el.innerHTML = '<div class="shared-empty-note">ยังไม่มีนัดหมาย</div>';
+    return;
+  }
+  const sorted = [...sharedAppointments].sort((a,b) => {
+    const da = apptStatus(a.date).diffDays, db2 = apptStatus(b.date).diffDays;
+    const aExpired = da < 0, bExpired = db2 < 0;
+    if(aExpired !== bExpired) return aExpired ? 1 : -1; // นัดที่ยังไม่หมดอายุขึ้นก่อนเสมอ
+    if(!aExpired) return da - db2; // ใกล้ถึงที่สุดขึ้นก่อน
+    return db2 - da; // หมดอายุ: เพิ่งผ่านไปหมาดๆ ขึ้นก่อน
+  });
+  sorted.forEach(appt => {
+    const st = apptStatus(appt.date);
+    const iconKey = statusIconKey(st.diffDays);
+    const card = document.createElement('div');
+    card.className = 'shared-appt-card';
+    card.innerHTML = `
+      <div class="shared-appt-head">
+        <div class="status-icon status-icon-${iconKey}" title="${st.label}">${STATUS_ICONS[iconKey]}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="shared-appt-name">${appt.name}</div>
+          <div class="shared-appt-place">${appt.place}${appt.dept ? ' · ' + appt.dept : ''}</div>
+          <div class="shared-appt-date">${fmtDateTh(appt.date)} · ${appt.time} น.</div>
+        </div>
+        <span class="badge badge-${st.cls}">${st.label}</span>
+      </div>
+      <ul class="shared-checklist"></ul>
+    `;
+    const listEl = card.querySelector('.shared-checklist');
+    if(appt.checklist.length === 0){
+      listEl.innerHTML = '<li class="shared-empty-note" style="padding:10px 4px;">ยังไม่มีเช็คลิสต์</li>';
+    } else {
+      appt.checklist.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'shared-check-item' + (item.done ? ' done' : '');
+        li.innerHTML = `
+          <div class="shared-check-box"><svg width="18" height="18" viewBox="0 0 14 14"><path d="M2 7l3.5 3.5L12 3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="shared-check-label">${item.text}</span>
+        `;
+        // ติ๊ก/ยกเลิกติ๊กได้อย่างเดียว — ไม่มี contenteditable บนข้อความ ไม่มีปุ่มลบ
+        li.addEventListener('click', () => toggleSharedItem(appt, item, li));
+        listEl.appendChild(li);
+      });
+    }
+    el.appendChild(card);
+  });
+}
+
+function toggleSharedItem(appt, item, li){
+  const newDone = !item.done;
+  item.done = newDone; // อัปเดตหน้าจอทันทีแบบ optimistic เหมือนจุดอื่นในแอป
+  li.classList.toggle('done', newDone);
+  db.rpc('toggle_shared_checklist_item', {
+    p_token: sharedToken, p_appt_id: appt.id, p_item_id: item.id, p_done: newDone
+  }).then(({ data, error }) => {
+    if(error || data === false){
+      // บันทึกไม่สำเร็จ -> ย้อนสถานะบนหน้าจอกลับ กันข้อมูลไม่ตรงกับฐานข้อมูลจริง
+      item.done = !newDone;
+      li.classList.toggle('done', !newDone);
+      console.error('บันทึกเช็คลิสต์ (shared view) ไม่สำเร็จ', error);
+      alert('บันทึกไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    }
   });
 }
 
@@ -831,6 +975,11 @@ document.addEventListener('touchstart', function(){}, { passive:true });
 // ห้ามเรียกก่อนหน้านั้นเด็ดขาด (เช่น ตอน appointments ยังเป็นค่าเริ่มต้นตอนประกาศตัวแปร)
 // ไม่งั้นป๊อปอัปจะคำนวณจากข้อมูลที่ยังโหลดไม่ครบ/ยังไม่ใช่ของจริงจาก Supabase
 async function loadAppointmentsAndShowHome(){
+  // สร้าง share token ให้บัญชีนี้ถ้ายังไม่มี (ตามที่ขอ "สร้างอัตโนมัติตอนสมัครหรือ login ครั้งแรก")
+  // ยิงแบบไม่รอ (fire-and-forget) ไม่บล็อกการโหลดนัดหมาย เพราะยังไม่จำเป็นต้องใช้จนกว่าจะกด
+  // ปุ่ม "แชร์ให้ผู้สูงอายุ" — พอถึงตอนนั้น cachedShareToken ก็มักจะพร้อมอยู่แล้วโดยไม่ต้องรอ
+  ensureShareToken().then(token => { cachedShareToken = token; });
+
   let loadFailed = false;
   try {
     appointments = await fetchAppointmentsFromDb();
@@ -861,7 +1010,18 @@ async function loadAppointmentsAndShowHome(){
 // (ดูเหมือนไม่มีหน้า login แต่ก็ไม่เห็นข้อมูลจริง) — getUser() ยืนยันกับเซิร์ฟเวอร์จริง ถ้า
 // token ใช้ไม่ได้จะ error ออกมาให้รู้ทันที เลยพากลับไปหน้า login ให้ถูกต้อง พร้อม signOut()
 // เคลียร์ session ค้างที่ใช้ไม่ได้ทิ้งไปด้วย กันไม่ให้วนเจอปัญหาเดิมซ้ำทุกครั้งที่เปิดแอป
+//
+// ข้อยกเว้น: ถ้า URL มี ?share=TOKEN ต่อท้าย แปลว่าเปิดผ่านลิงก์แชร์ (สำหรับผู้สูงอายุ) —
+// ต้องแยกออกจาก flow login ปกติทั้งหมด "ไม่ต้อง login เลย" ตามที่ขอ จึงเช็คจุดนี้เป็นอันดับ
+// แรกสุดก่อนเช็ค session ใดๆ ถ้าเจอ token ให้เข้าโหมดแสดงหน้าแชร์แล้ว return ออกไปเลย
 async function initApp(){
+  const shareToken = new URLSearchParams(location.search).get('share');
+  if(shareToken){
+    await initSharedView(shareToken);
+    document.getElementById('loadingState').classList.add('hidden');
+    return;
+  }
+
   populateTimeSelects();
   renderNotifyChips();
   const { data: { user }, error } = await db.auth.getUser();

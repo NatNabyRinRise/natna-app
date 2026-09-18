@@ -36,6 +36,7 @@
   <!-- ============ HOME PAGE ============ -->
   <div id="homePage" class="hidden">
     <div class="topbar-row">
+      <button class="share-btn" onclick="openShareModal()">🔗 แชร์ให้ผู้สูงอายุ</button>
       <button class="logout-btn" onclick="handleLogout()">ออกจากระบบ</button>
     </div>
     <!-- มาสคอต: แสดงจำนวนนัดหมายที่เหลือน้อยกว่า 5 วัน อัปเดตทุกครั้งที่ showHome() ทำงาน -->
@@ -176,6 +177,25 @@
     </div>
   </div>
 
+  <!-- ============ SHARED VIEW (เปิดผ่านลิงก์แชร์ ?share=TOKEN — ไม่ต้อง login เลย) ============ -->
+  <!-- ดู/ติ๊กเช็คลิสต์ได้อย่างเดียว ไม่มีปุ่มเพิ่ม/แก้ไข/ลบใดๆ ตัวหนังสือ/ปุ่มขนาดใหญ่เป็นพิเศษ
+       เพราะผู้ใช้จริงคือผู้สูงอายุ -->
+  <div id="sharedPage" class="hidden shared-view">
+    <div class="shared-header">
+      <div class="shared-title">นัดหมายของคุณ</div>
+    </div>
+    <div id="sharedList"></div>
+  </div>
+
+  <!-- token ผิด/ไม่พบในระบบ — ไม่โชว์ข้อมูลอะไรทั้งสิ้น -->
+  <div id="sharedInvalidPage" class="hidden shared-view">
+    <div class="shared-invalid-box">
+      <div class="shared-invalid-icon">⚠️</div>
+      <div class="shared-invalid-title">ลิงก์ไม่ถูกต้อง</div>
+      <p class="shared-invalid-sub">ลิงก์นี้ไม่ถูกต้องหรือหมดอายุแล้ว<br>กรุณาติดต่อผู้ดูแลของคุณเพื่อขอลิงก์ใหม่</p>
+    </div>
+  </div>
+
 </div>
 
 <!-- Confirm delete modal -->
@@ -199,7 +219,20 @@
   </div>
 </div>
 
+<!-- Share link modal (แสดงลิงก์ + QR code สำหรับแชร์ให้ผู้สูงอายุ) -->
+<div class="modal-overlay hidden" id="shareModal">
+  <div class="modal-box share-modal-box">
+    <div class="share-modal-title">แชร์ให้ผู้สูงอายุ</div>
+    <p class="share-modal-sub">ให้ลิงก์หรือให้สแกน QR code นี้ เพื่อดูนัดหมาย/ติ๊กเช็คลิสต์ได้โดยไม่ต้อง login</p>
+    <div class="share-qr-wrap"><canvas id="shareQrCanvas"></canvas></div>
+    <div class="share-link-box" id="shareLinkText"></div>
+    <button class="form-submit" onclick="copyShareLink()">คัดลอกลิงก์</button>
+    <button class="btn-cancel share-close-btn" onclick="closeShareModal()">ปิด</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
