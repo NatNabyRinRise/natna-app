@@ -465,10 +465,16 @@ function renderCardView(){
         </div>
       </div>
     `;
-    // แตะที่ไหนของการ์ดก็ได้ (รวมปุ่มแก้ไข) ให้ไปหน้าแก้ไขนัดหมายเหมือนกันหมด
-    // มีแค่ปุ่มลบเท่านั้นที่แยกออกไปทำงานของตัวเอง (เด้ง popup ยืนยันก่อนลบ)
+    // แตะที่การ์ด (ไม่รวมปุ่มแก้ไข/ลบ) ให้ไปหน้ารายละเอียด/เช็คลิสต์ (showDetail) เหมือนกับ
+    // การ์ดในรายการนัดของหน้าปฏิทิน — ให้ทั้งสองทางเข้าหน้าเดียวกันเสมอ (มีป้ายสถานะพร้อม/
+    // ไม่พร้อม + ปุ่มจัดการรายการแนะนำครบ) ส่วนปุ่มแก้ไข (ดินสอ) แยกไปเปิดฟอร์มแก้ไขข้อมูล
+    // นัดหมายต่างหาก และปุ่มลบเปิด popup ยืนยันก่อนลบเหมือนเดิม
     card.addEventListener('click', (e) => {
-      if(e.target.closest('.trash-btn')) return;
+      if(e.target.closest('.trash-btn') || e.target.closest('.edit-btn')) return;
+      showDetail(appt.id);
+    });
+    card.querySelector('.edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
       editApptFromList(appt.id);
     });
     card.querySelector('.trash-btn').addEventListener('click', (e) => {
@@ -536,8 +542,9 @@ function checkUpcomingPopup(){
         <div class="popup-reason">${reason}</div>
       </div>
     `;
-    // แตะการ์ดใน pop-up ให้ไปหน้าแก้ไขนัดหมาย เหมือนกับปุ่ม "แก้ไข" ในการ์ดหน้าแรก/ปฏิทิน
-    card.addEventListener('click', () => { closeUpcomingPopup(); editApptFromList(appt.id); });
+    // แตะการ์ดใน pop-up ให้ไปหน้ารายละเอียด/เช็คลิสต์ (showDetail) เหมือนกับการ์ดในหน้าแรก/
+    // ปฏิทิน — สอดคล้องกันทั้งแอป: ทุกจุดที่แตะ "การ์ด" ไปหน้าเดียวกันเสมอ
+    card.addEventListener('click', () => { closeUpcomingPopup(); showDetail(appt.id); });
     el.appendChild(card);
   });
   document.getElementById('upcomingModal').classList.remove('hidden');
